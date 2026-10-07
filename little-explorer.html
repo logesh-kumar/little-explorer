@@ -171,7 +171,9 @@ h1 em { font-style: normal; color: var(--sea-deep); display: block; }
 
 .sea { fill: var(--sea); }
 .grat { fill: none; stroke: #FFFFFF; stroke-opacity: .2; stroke-width: .6; vector-effect: non-scaling-stroke; pointer-events: none; }
-.land { stroke: #FFFFFF; stroke-width: .7; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.land { stroke: none; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.borders { fill: none; stroke: #FFFFFF; stroke-width: .9; stroke-opacity: .95; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; pointer-events: none; }
+.coast { fill: none; stroke: #2B7FB5; stroke-width: .7; stroke-opacity: .55; vector-effect: non-scaling-stroke; stroke-linejoin: round; pointer-events: none; }
 .land.sel { fill: var(--sun); stroke: var(--ink); stroke-width: 1.8; }
 .land.glow { stroke: var(--sun-deep); stroke-width: 2.6; animation: glow .75s ease-in-out infinite alternate; }
 @keyframes glow { from { fill: #FFE066; } to { fill: #FFF8D6; } }
@@ -430,87 +432,16 @@ h1 em { font-style: normal; color: var(--sea-deep); display: block; }
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+<script src="content.js"></script>
 <script>
 "use strict";
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const cap1 = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 const shuffle = (a) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 
-/* ---------------- content ---------------- */
-const CONT = {
-  asia:       { name: "Asia", color: "yellow", emoji: "🐼", at: [92, 48], lbl: [88, 56], fact: "Asia is the biggest continent, and more people live there than anywhere else." },
-  africa:     { name: "Africa", color: "orange", emoji: "🦁", at: [19, 6], fact: "Africa has lions and giraffes, and the Nile, the longest river in the world." },
-  europe:     { name: "Europe", color: "purple", emoji: "🏰", at: [18, 53], fact: "Europe has lots of countries close together, and many old castles." },
-  namerica:   { name: "North America", color: "green", emoji: "🦅", at: [-102, 46], lbl: [-100, 49], fact: "North America goes from icy Greenland all the way down to sunny Mexico." },
-  samerica:   { name: "South America", color: "pink", emoji: "🦜", at: [-60, -14], lbl: [-62, -25], fact: "South America has the Amazon, the biggest rainforest in the world." },
-  oceania:    { name: "Australia & Oceania", say: "Australia and Oceania", color: "red", emoji: "🦘", at: [134, -25], lbl: [138, -43], fact: "Kangaroos and koalas live in Australia, and Oceania has thousands of islands." },
-  antarctica: { name: "Antarctica", color: "white", emoji: "🐧", at: [30, -80], fact: "Antarctica is the coldest place on Earth. It is covered in ice, and penguins live there." },
-};
-const OCEANS = {
-  pacific:  { name: "Pacific Ocean", emoji: "🐙", at: [[-140, 2], [156, 12]], fact: "The Pacific is the biggest and deepest ocean in the world.", hint: "It is the biggest ocean, between Asia and the Americas." },
-  atlantic: { name: "Atlantic Ocean", emoji: "🐬", at: [[-40, 22]], fact: "The Atlantic is the second biggest ocean. Ships cross it to sail between Europe and America.", hint: "It is between the Americas and Africa." },
-  indian:   { name: "Indian Ocean", emoji: "🐢", at: [[78, -20]], fact: "The Indian Ocean is the warmest ocean. Sea turtles love it there!", hint: "Look below India!" },
-  southern: { name: "Southern Ocean", emoji: "🐳", at: [[20, -63], [-120, -64]], fact: "The Southern Ocean swirls all the way around icy Antarctica.", hint: "It goes all the way around Antarctica, at the bottom of the world." },
-  arctic:   { name: "Arctic Ocean", emoji: "🧊", at: [[20, 84.5]], fact: "The Arctic Ocean is at the top of the world. It is so cold that it is often frozen.", hint: "Look at the very top of the world." },
-};
-const COUNTRIES = [
-  { a: "IND", name: "India", cont: "asia", iso: "in", emoji: "🐅", cap: "New Delhi", capAt: [77.21, 28.61], fact: "Tigers live in India, and so does the beautiful Taj Mahal.", flagFact: "India's flag is orange, white and green, with a blue wheel in the middle." },
-  { a: "CHN", name: "China", cont: "asia", iso: "cn", emoji: "🐼", cap: "Beijing", capAt: [116.40, 39.90], fact: "Giant pandas live in China, and the Great Wall there is super long.", flagFact: "China's flag is red, with five yellow stars." },
-  { a: "JPN", name: "Japan", cont: "asia", iso: "jp", emoji: "🗻", cap: "Tokyo", capAt: [139.69, 35.69], fact: "Japan is made of islands, and Mount Fuji is its tallest mountain.", flagFact: "Japan's flag is white, with a big red circle like the sun." },
-  { a: "IDN", name: "Indonesia", cont: "asia", iso: "id", emoji: "🦎", cap: "Jakarta", capAt: [106.85, -6.21], fact: "Indonesia has thousands of islands, and real Komodo dragons live there.", flagFact: "Indonesia's flag is red on top and white on the bottom." },
-  { a: "THA", name: "Thailand", cont: "asia", iso: "th", emoji: "🐘", cap: "Bangkok", capAt: [100.50, 13.76], fact: "Elephants are a very special animal in Thailand.", flagFact: "Thailand's flag has red, white and blue stripes." },
-  { a: "SAU", name: "Saudi Arabia", cont: "asia", iso: "sa", emoji: "🐪", cap: "Riyadh", capAt: [46.68, 24.71], fact: "Saudi Arabia is mostly sandy desert, and camels walk across it.", flagFact: "Saudi Arabia's flag is green, with white writing and a sword." },
-  { a: "NPL", name: "Nepal", cont: "asia", iso: "np", emoji: "🏔️", cap: "Kathmandu", capAt: [85.32, 27.72], fact: "Mount Everest, the tallest mountain in the world, is in Nepal.", flagFact: "Nepal's flag is made of two triangles. It is the only country flag that is not a rectangle!" },
-  { a: "EGY", name: "Egypt", cont: "africa", iso: "eg", emoji: "🐊", cap: "Cairo", capAt: [31.24, 30.04], fact: "Egypt has the great pyramids, and crocodiles swim in its river, the Nile.", flagFact: "Egypt's flag is red, white and black, with a golden eagle." },
-  { a: "KEN", name: "Kenya", cont: "africa", iso: "ke", emoji: "🦒", cap: "Nairobi", capAt: [36.82, -1.29], fact: "Giraffes, zebras and lions roam across Kenya.", flagFact: "Kenya's flag is black, red and green, with a shield and two spears." },
-  { a: "ZAF", name: "South Africa", cont: "africa", iso: "za", emoji: "🦏", cap: "Pretoria", capAt: [28.19, -25.75], fact: "Rhinos live in South Africa, and penguins play on some of its beaches!", flagFact: "South Africa's flag is very colourful, with a big sideways Y shape." },
-  { a: "NGA", name: "Nigeria", cont: "africa", iso: "ng", emoji: "🥁", cap: "Abuja", capAt: [7.49, 9.06], fact: "More people live in Nigeria than in any other country in Africa.", flagFact: "Nigeria's flag is green, white and green." },
-  { a: "MAR", name: "Morocco", cont: "africa", iso: "ma", emoji: "🏜️", cap: "Rabat", capAt: [-6.84, 34.02], fact: "Morocco has snowy mountains and the edge of the giant Sahara Desert.", flagFact: "Morocco's flag is red, with a green star." },
-  { a: "GBR", name: "United Kingdom", say: "the United Kingdom", cont: "europe", iso: "gb", emoji: "👑", cap: "London", capAt: [-0.13, 51.51], fact: "The United Kingdom has a king, and a famous clock tower called Big Ben.", flagFact: "The United Kingdom's flag has blue, red and white crosses. People call it the Union Jack." },
-  { a: "FRA", name: "France", cont: "europe", iso: "fr", emoji: "🥐", cap: "Paris", capAt: [2.35, 48.86], fact: "France is famous for the tall Eiffel Tower and yummy croissants.", flagFact: "France's flag has blue, white and red stripes standing up." },
-  { a: "ITA", name: "Italy", cont: "europe", iso: "it", emoji: "🍕", cap: "Rome", capAt: [12.50, 41.90], fact: "Pizza comes from Italy! On the map, Italy looks like a boot.", flagFact: "Italy's flag has green, white and red stripes standing up." },
-  { a: "ESP", name: "Spain", cont: "europe", iso: "es", emoji: "💃", cap: "Madrid", capAt: [-3.70, 40.42], fact: "Spain is sunny, with sandy beaches and flamenco dancing.", flagFact: "Spain's flag has red and yellow stripes." },
-  { a: "DEU", name: "Germany", cont: "europe", iso: "de", emoji: "🏰", cap: "Berlin", capAt: [13.40, 52.52], fact: "Germany has fairy-tale castles and big, dark forests.", flagFact: "Germany's flag has black, red and gold stripes." },
-  { a: "RUS", name: "Russia", cont: "europe", also: "asia", iso: "ru", emoji: "🐻", cap: "Moscow", capAt: [37.62, 55.76], fact: "Russia is the biggest country in the world. It is in Europe and Asia, and brown bears live in its forests.", flagFact: "Russia's flag has white, blue and red stripes." },
-  { a: "NOR", name: "Norway", cont: "europe", iso: "no", emoji: "🌌", cap: "Oslo", capAt: [10.75, 59.91], fact: "In Norway, you can see the colourful northern lights dance in the sky.", flagFact: "Norway's flag is red, with a blue and white cross." },
-  { a: "USA", name: "United States", say: "the United States", cont: "namerica", iso: "us", emoji: "🗽", cap: "Washington, D.C.", capSay: "Washington D C", capAt: [-77.04, 38.91], fact: "The Statue of Liberty is in the United States. She is a giant green lady holding a torch.", flagFact: "The United States' flag has 50 white stars and 13 red and white stripes." },
-  { a: "CAN", name: "Canada", cont: "namerica", iso: "ca", emoji: "🍁", cap: "Ottawa", capAt: [-75.70, 45.42], fact: "Canada has a maple leaf on its flag, and moose live in its forests.", flagFact: "Canada's flag is red and white, with a red maple leaf." },
-  { a: "MEX", name: "Mexico", cont: "namerica", iso: "mx", emoji: "🌮", cap: "Mexico City", capAt: [-99.13, 19.43], fact: "Tacos come from Mexico, and so do lots of colourful festivals.", flagFact: "Mexico's flag is green, white and red, with an eagle holding a snake." },
-  { a: "BRA", name: "Brazil", cont: "samerica", iso: "br", emoji: "🦜", cap: "Brasília", capSay: "Brasilia", capAt: [-47.88, -15.79], fact: "Most of the Amazon rainforest is in Brazil, full of parrots and monkeys.", flagFact: "Brazil's flag is green, with a yellow diamond and a blue starry circle." },
-  { a: "ARG", name: "Argentina", cont: "samerica", iso: "ar", emoji: "🐎", cap: "Buenos Aires", capAt: [-58.38, -34.60], fact: "In Argentina, cowboys called gauchos ride horses across wide grassy plains.", flagFact: "Argentina's flag is light blue and white, with a smiling sun." },
-  { a: "PER", name: "Peru", cont: "samerica", iso: "pe", emoji: "🦙", cap: "Lima", capAt: [-77.04, -12.05], fact: "Fluffy llamas live high up in the mountains of Peru.", flagFact: "Peru's flag has red, white and red stripes standing up." },
-  { a: "CHL", name: "Chile", cont: "samerica", iso: "cl", emoji: "🌋", cap: "Santiago", capAt: [-70.67, -33.45], fact: "Chile is very long and thin, and it has lots of volcanoes.", flagFact: "Chile's flag is white and red, with a white star on a blue square." },
-  { a: "AUS", name: "Australia", cont: "oceania", iso: "au", emoji: "🦘", cap: "Canberra", capAt: [149.13, -35.28], fact: "Kangaroos hop around Australia, and koalas sleep in its trees.", flagFact: "Australia's flag is dark blue, with the Union Jack and white stars." },
-  { a: "NZL", name: "New Zealand", cont: "oceania", iso: "nz", emoji: "🐑", cap: "Wellington", capAt: [174.78, -41.29], fact: "New Zealand has more sheep than people!", flagFact: "New Zealand's flag is dark blue, with the Union Jack and four red stars." },
-];
-const BY_ADM = Object.fromEntries(COUNTRIES.map((c) => [c.a, c]));
-const sayC = (c) => c.say || c.name;
-const sayCap = (c) => c.capSay || c.cap;
-const contSay = (k) => (k ? CONT[k].say || CONT[k].name : "the ocean");
-
-const LEVELS = [
-  { id: "oceans", name: "Oceans", emoji: "🌊", blurb: "5 big oceans", prefix: "o:" },
-  { id: "continents", name: "Continents", emoji: "🗺️", blurb: "7 continents", prefix: "c:", need: ["oceans", 3] },
-  { id: "countries", name: "Countries", emoji: "🚩", blurb: "28 countries", prefix: "n:", need: ["continents", 4] },
-  { id: "capitals", name: "Capitals", emoji: "⭐", blurb: "Expert level", prefix: "k:", need: ["countries", 8] },
-];
-const BOOK = [...LEVELS, { id: "flags", name: "Flags", emoji: "🏁", prefix: "f:" }];
-const LEVEL = Object.fromEntries(BOOK.map((l) => [l.id, l]));
-
-function itemsFor(level) {
-  if (level === "flags") return COUNTRIES.map((c) => ({ id: "f:" + c.a, level, kind: "country", key: c.a, c, name: c.name, say: sayC(c), emoji: c.emoji, flag: c.iso, at: c.capAt, fact: c.flagFact }));
-  if (level === "oceans") return Object.entries(OCEANS).map(([k, o]) => ({ id: "o:" + k, level, kind: "ocean", key: k, name: o.name, say: "the " + o.name, emoji: o.emoji, at: o.at[0], fact: o.fact }));
-  if (level === "continents") return Object.entries(CONT).map(([k, c]) => ({ id: "c:" + k, level, kind: "cont", key: k, name: c.name, say: c.say || c.name, emoji: c.emoji, at: c.at, fact: c.fact }));
-  const capitals = level === "capitals";
-  return COUNTRIES.map((c) => ({
-    id: (capitals ? "k:" : "n:") + c.a, level, kind: "country", key: c.a, c,
-    name: capitals ? c.cap : c.name, say: capitals ? sayCap(c) : sayC(c),
-    emoji: capitals ? "⭐" : c.emoji, flag: capitals ? null : c.iso, at: c.capAt, fact: c.fact,
-  }));
-}
 
 /* ---------------- saved progress (this browser only) ---------------- */
 const KEY = "little-explorer-v1";
@@ -538,13 +469,37 @@ function pickVoice() {
   voice = pref.map((n) => vs.find((v) => v.name.includes(n))).find(Boolean) || vs.find((v) => v.lang === "en-US") || vs[0] || null;
 }
 if (synth) { pickVoice(); synth.onvoiceschanged = pickVoice; }
-function say(text) {
+// Tully's voice: each sentence plays its ElevenLabs recording (voice/<key>.mp3) when one exists,
+// otherwise the browser's own speech says it. Sentences play one after another.
+const recorded = new Set();
+const player = new Audio();
+player.preload = "auto";
+let speakId = 0, stopClip = null;
+function stopSpeech() {
+  speakId++;
+  try { player.pause(); } catch {}
+  if (stopClip) stopClip();
+  if (synth) synth.cancel();
+}
+function playClip(key) {
   return new Promise((res) => {
-    const est = Math.min(9000, 900 + text.length * 62);
-    if (save.muted || !synth) { setTimeout(res, Math.min(1500, est)); return; }
+    let done = false;
+    const fin = () => { if (done) return; done = true; player.onended = player.onerror = null; stopClip = null; res(); };
+    stopClip = fin; player.onended = fin; player.onerror = fin;
+    player.src = `voice/${key}.mp3`;
+    player.defaultPlaybackRate = player.playbackRate = save.rate < 0.9 ? 0.85 : 1;
+    player.preservesPitch = true;
+    const p = player.play();
+    if (p) p.catch(fin);
+    setTimeout(fin, 12000);
+  });
+}
+function speakSentence(text) {
+  return new Promise((res) => {
+    const est = Math.min(9000, 700 + text.length * 62);
+    if (!synth) { setTimeout(res, Math.min(1500, est)); return; }
     let done = false; const fin = () => { if (!done) { done = true; res(); } };
     try {
-      synth.cancel();
       const u = new SpeechSynthesisUtterance(text);
       if (voice) u.voice = voice;
       u.lang = voice ? voice.lang : "en-US"; u.rate = save.rate; u.pitch = 1.12;
@@ -553,6 +508,16 @@ function say(text) {
     } catch { fin(); }
     setTimeout(fin, est / save.rate + 1200);
   });
+}
+async function say(text) {
+  stopSpeech();
+  const id = speakId;
+  if (save.muted) { await sleep(Math.min(1500, 700 + text.length * 40)); return; }
+  for (const s of splitSentences(text)) {
+    if (id !== speakId) return;
+    const key = voiceKey(s);
+    if (recorded.has(key)) await playClip(key); else await speakSentence(s);
+  }
 }
 let lastLine = "";
 function tell(text) { lastLine = text; $("#bubbleText").textContent = text; return say(text); }
@@ -614,12 +579,14 @@ function flyToStars(it, x, y) {
 }
 
 /* ---------------- map ---------------- */
-let features = [], W = 0, H = 0, T = d3.zoomIdentity;
+let features = [], globeFeatures = [], borders = null, coast = null, W = 0, H = 0, T = d3.zoomIdentity;
 const svg = d3.select("#map");
 const root = svg.append("g");
 const seaPath = root.append("path").attr("class", "sea");
 const gratPath = root.append("path").attr("class", "grat");
 const gLand = root.append("g");
+const bordersPath = root.append("path").attr("class", "borders");
+const coastPath = root.append("path").attr("class", "coast");
 const gNames = root.append("g").attr("class", "labels").attr("display", "none");
 const gLabels = root.append("g").attr("class", "labels");
 const gHit = root.append("g");
@@ -641,6 +608,7 @@ function fillFor(f) {
 }
 
 function buildMap() {
+  for (const f of globeFeatures) f._fill = fillFor(f);
   for (const f of features) {
     f._fill = fillFor(f);
     const polys = f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates;
@@ -680,6 +648,8 @@ function layout() {
   seaPath.attr("d", path({ type: "Sphere" }));
   gratPath.attr("d", path(graticule));
   landSel.attr("d", path);
+  bordersPath.attr("d", path(borders));
+  coastPath.attr("d", path(coast));
   gHit.selectAll("path").attr("d", path);
   gNames.selectAll("g").each((d) => { const [[x0, y0], [x1, y1]] = path.bounds(mainOf[d.a].g); d.pw = Math.max(x1 - x0, (y1 - y0) * .8); });
   nameNodes.sort((m, n) => (n.__data__.big - m.__data__.big) || (n.__data__.pw - m.__data__.pw));
@@ -705,7 +675,7 @@ function updateNames() {
   });
   for (const n of nameNodes) {
     const d = n.__data__;
-    let show = d.pw * T.k >= d.tw;
+    let show = d.pw * T.k >= d.tw * (d.big ? 0.5 : 0.8); // names may overhang their country a little
     if (show) { const b = boxOf(d, d.tw, 14); show = free(b); if (show) placed.push(b); }
     if (show) n.removeAttribute("display"); else n.setAttribute("display", "none");
   }
@@ -827,7 +797,7 @@ const globes = [];
 function makeGlobe(canvas, rot) { const g = { canvas, rot: rot || [-20, -18, 0], spin: true, idleUntil: 0, anim: null, highlight: null, pin: null }; globes.push(g); return g; }
 function drawGlobe(gl) {
   const c = gl.canvas, w = c.clientWidth, h = c.clientHeight;
-  if (!w || !h || !features.length) return;
+  if (!w || !h || !globeFeatures.length) return;
   const dpr = Math.min(2, devicePixelRatio || 1);
   if (c.width !== Math.round(w * dpr) || c.height !== Math.round(h * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); }
   const ctx = c.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, h);
@@ -840,7 +810,7 @@ function drawGlobe(gl) {
   ctx.beginPath(); p({ type: "Sphere" }); ctx.fillStyle = sea; ctx.fill();
   ctx.beginPath(); p(graticule); ctx.strokeStyle = "rgba(255,255,255,.18)"; ctx.lineWidth = .6; ctx.stroke();
   ctx.strokeStyle = "rgba(255,255,255,.75)"; ctx.lineWidth = .6;
-  for (const f of features) {
+  for (const f of globeFeatures) {
     ctx.beginPath(); p(f);
     ctx.fillStyle = gl.highlight && gl.highlight(f) ? "#FFE066" : f._fill; ctx.fill(); ctx.stroke();
   }
@@ -875,7 +845,7 @@ function globeHit(gl, cx, cy) {
   const rect = gl.canvas.getBoundingClientRect(), x = cx - rect.left, y = cy - rect.top;
   if (!gl.proj || Math.hypot(x - rect.width / 2, y - rect.height / 2) > gl.r) return null;
   const ll = gl.proj.invert([x, y]);
-  const f = features.find((f) => d3.geoContains(f, ll));
+  const f = globeFeatures.find((f) => d3.geoContains(f, ll));
   return f ? { kind: "country", f } : waterHit(ll);
 }
 
@@ -902,7 +872,7 @@ function toggleGlobe(on) {
   $("#exploreGlobe").hidden = !on;
   $("#globeToggle").textContent = on ? "🗺️ Flat map" : "🌍 Globe";
   $(".stage-tools").hidden = on;
-  if (on) { exploreGlobe.idleUntil = 0; tell("Drag the globe to spin it. Tap any place to learn about it!"); }
+  if (on) { exploreGlobe.idleUntil = 0; tell(LINES.globeIntro()); }
 }
 $("#globeToggle").onclick = () => toggleGlobe($("#exploreGlobe").hidden);
 $("#atlasBtn").onclick = () => { sfx.pop(); startAtlas(); };
@@ -914,11 +884,11 @@ function show(id) {
   $("#celebrate").hidden = true;
   if (id === "play") requestAnimationFrame(layout);
 }
-function toMenu() { game.token++; game.mode = null; if (synth) synth.cancel(); show("menu"); }
+function toMenu() { game.token++; game.mode = null; stopSpeech(); show("menu"); }
 
 $("#startBtn").onclick = () => {
   audio(); sfx.pop(); show("menu");
-  say("Hi! I'm Tully the turtle. Let's explore the world together! What shall we play?");
+  say(LINES.greet());
 };
 $$("[data-go]").forEach((b) => b.addEventListener("click", () => {
   sfx.pop(); const go = b.dataset.go;
@@ -945,13 +915,13 @@ function openLevels(kind) {
       <small>${open ? `${have} of ${total} stickers` : `Find ${L.need[1]} ${prev.name.toLowerCase()} to open`}</small>
       <span class="meter" aria-hidden="true"><i style="width:${open ? (have / total) * 100 : (countOf(prev.id) / L.need[1]) * 100}%"></i></span>`;
     b.onclick = () => {
-      if (!open) { sfx.no(); say(`This one is locked. Find ${L.need[1]} ${prev.name.toLowerCase()} first. You have ${countOf(prev.id)}.`); return; }
+      if (!open) { sfx.no(); say(LINES.locked(L, countOf(prev.id))); return; }
       sfx.pop(); kind === "find" ? startFind(L.id) : startMatch(L.id);
     };
     box.append(b);
   });
   show("levels");
-  say(kind === "find" ? "Find It! Pick a level." : "Match It! Pick a level.");
+  say(LINES.pickLevel(kind));
 }
 
 function setMode(mode, level) {
@@ -977,38 +947,12 @@ function setMode(mode, level) {
 }
 
 /* ---------------- describing what was tapped ---------------- */
-function sayPlace(f) {
-  const p = f.properties, c = BY_ADM[p.a];
-  if (c) return sayC(c);
-  return /^(United|Central African|Democratic|Dem\.|Netherlands|Philippines|Bahamas|Solomon|Falkland|Dominican|Gambia|French Southern)/.test(p.n) ? "the " + p.n : p.n;
-}
 function matches(it, hit) {
   if (!hit) return false;
   if (it.kind === "ocean") return hit.kind === "ocean" && hit.key === it.key;
   if (it.kind === "cont") return hit.kind === "country" && hit.f.properties.c === it.key;
   return hit.kind === "country" && hit.f.properties.a === it.key;
 }
-function describe(hit, it) {
-  if (hit.kind === "country") {
-    const p = hit.f.properties, nm = sayPlace(hit.f);
-    if (it.kind === "ocean") return `That's land. It's ${nm}`;
-    if (it.kind === "cont") return p.c ? `That's ${nm}, in ${contSay(p.c)}` : `That's ${nm}`;
-    return `That's ${nm}`;
-  }
-  if (hit.kind === "ocean") return it.kind === "ocean" ? `That's the ${OCEANS[hit.key].name}` : `That's the ${OCEANS[hit.key].name}. We need land`;
-  return "That's the Caspian Sea, a giant salty lake";
-}
-function hint(it) {
-  if (it.kind === "ocean") return OCEANS[it.key].hint;
-  if (it.kind === "cont") return `Look for the ${CONT[it.key].color} one!`;
-  const c = it.c, where = c.also ? `${contSay(c.cont)} and ${contSay(c.also)}` : contSay(c.cont);
-  return it.level === "capitals" ? `It's in ${where}.` : `${cap1(sayC(c))} is in ${where}.`;
-}
-function successText(it, fresh) {
-  const head = it.level === "capitals" ? `Yes! ${sayCap(it.c)} is the capital of ${sayC(it.c)}!` : `Yes! That's ${it.say}!`;
-  return fresh ? `${head} You won a sticker! ${it.fact}` : head;
-}
-function answerName(it) { return it.level === "capitals" ? sayC(it.c) : it.say; }
 
 /* wrong answers get gentler and gentler help: a hint, then "look here", then the answer glows */
 function miss(state, it, hit) {
@@ -1017,11 +961,11 @@ function miss(state, it, hit) {
   state.tries++;
   if (state.revealed || state.tries >= 3) {
     if (!state.revealed) { state.revealed = true; clearHints(); glow(it); zoomTo(it); }
-    tell(`${what}. Here it is, glowing! Tap ${answerName(it)}.`);
+    tell(LINES.missReveal(what, it));
   } else if (state.tries === 1) {
-    tell(`${what}. Try again! ${hint(it)}`); hintFlash(it);
+    tell(LINES.missFirst(what, it)); hintFlash(it);
   } else {
-    tell(it.level === "capitals" ? `${what}. ${sayCap(it.c)} is the capital of ${sayC(it.c)}. Look here!` : `${what}. Look here!`);
+    tell(LINES.missSecond(what, it));
     zoomTo(it); ring(it);
   }
 }
@@ -1037,7 +981,7 @@ function celebrateAt(it) {
 /* ---------------- explore ---------------- */
 function startExplore() {
   setMode("explore");
-  tell("Tap anywhere on the map to learn about it!");
+  tell(LINES.exploreIntro());
   $("#sheetWrap").innerHTML = sheetHTML({ art: "🌍", title: "Our world", chips: [], text: "It has 5 oceans and 7 continents. The blue is water and the colours are land. Each continent has its own colour!" });
 }
 function sheetHTML({ art, flag, title, chips, text, extra }) {
@@ -1057,27 +1001,27 @@ function explore(hit) {
     if (c) {
       addMark({ type: "star", at: c.capAt, text: c.cap });
       card = { art: c.emoji, flag: c.iso, title: c.name, chips: c.also ? [c.cont, c.also] : [c.cont], text: c.fact, extra: `⭐ Capital city: ${c.cap}` };
-      line = `${cap1(sayC(c))}! ${c.fact} The capital city is ${sayCap(c)}.`;
+      line = LINES.explorePlace(p);
     } else if (p.c === "antarctica") {
       card = { art: "🐧", title: "Antarctica", chips: ["antarctica"], text: CONT.antarctica.fact };
-      line = `This is Antarctica! ${CONT.antarctica.fact}`;
+      line = LINES.explorePlace(p);
     } else if (!p.c) {
-      card = { art: "🏝️", title: p.n, chips: [], text: "Little islands far out in the Indian Ocean." };
-      line = `These are the ${p.n}, little islands far out in the Indian Ocean.`;
+      card = { art: "🏝️", title: p.n, chips: [], text: "Little islands far out in the ocean." };
+      line = LINES.explorePlace(p);
     } else {
       card = { art: CONT[p.c].emoji, title: p.n, chips: [p.c], text: `${p.n} is a country in ${CONT[p.c].say || CONT[p.c].name}.` };
-      line = `This is ${sayPlace(hit.f)}, in ${contSay(p.c)}.`;
+      line = LINES.explorePlace(p);
     }
   } else if (hit.kind === "ocean") {
     const o = OCEANS[hit.key];
     addMark({ type: "ring", at: hit.at });
     exploreGlobe.pin = hit.at;
     card = { art: o.emoji, title: o.name, chips: [], text: o.fact };
-    line = `The ${o.name}! ${o.fact}`;
+    line = LINES.exploreOcean(hit.key);
   } else {
     addMark({ type: "ring", at: hit.at });
     card = { art: "🌊", title: "Caspian Sea", chips: [], text: "It is called a sea, but it is really the biggest lake in the world!" };
-    line = "The Caspian Sea! It is called a sea, but it is really the biggest lake in the world.";
+    line = LINES.exploreLake();
   }
   $("#sheetWrap").innerHTML = sheetHTML(card);
   tell(line);
@@ -1105,11 +1049,7 @@ function ask(tok) {
   game.state = { tries: 0, revealed: false }; game.busy = false;
   dots(game.queue.length, game.qi);
   syncHit([it]);
-  const q = it.level === "oceans" ? `Can you find ${it.say}? Tap the water!`
-    : it.level === "continents" ? `Where is ${it.say}? Tap it!`
-    : it.level === "countries" ? `Can you find ${it.say}? Tap it!`
-    : `${sayCap(it.c)} is a capital city. Which country is it in?`;
-  tell(cap1(q));
+  tell(cap1(LINES.question(it)));
 }
 async function findTap(hit) {
   const it = game.cur, tok = game.token;
@@ -1122,7 +1062,7 @@ async function findTap(hit) {
   const [x, y] = celebrateAt(it);
   if (fresh) flyToStars(it, x, y);
   dots(game.queue.length, game.qi + 1);
-  await tell(game.state.revealed ? `Well done! That's ${answerName(it)}. Now you know it!` : successText(it, fresh));
+  await tell(LINES.findWin(it, fresh, game.state.revealed));
   await sleep(350);
   if (tok !== game.token) return;
   game.qi++; ask(tok);
@@ -1143,7 +1083,7 @@ function deal(tok) {
   game.tray = next.map((it) => ({ it, tries: 0, revealed: false }));
   game.sel = null; game.busy = false;
   renderTray(); dots(game.total, game.done);
-  tell(game.level === "capitals" ? "Each card is a capital city. Drag it to its country!" : "Drag each card to its home on the map! Or tap a card, then tap the map.");
+  tell(LINES.matchDeal(game.level));
 }
 function renderTray() {
   const box = $("#tray"); box.innerHTML = "";
@@ -1186,7 +1126,7 @@ function selectCard(card) {
   if (game.busy) return;
   game.sel = card; sfx.pop(); renderTray();
   const it = card.it;
-  tell(it.level === "capitals" ? `${sayCap(it.c)}! Which country is it the capital of? Tap it on the map.` : `${cap1(it.say)}! Now tap its home on the map.`);
+  tell(LINES.matchSelect(it));
 }
 async function place(card, hit) {
   if (game.busy) return;
@@ -1204,12 +1144,12 @@ async function place(card, hit) {
     : { type: "emoji", at: centerOf(it), text: it.emoji, keep: true });
   game.tray = game.tray.filter((c) => c !== card); game.sel = null; game.done++;
   renderTray(); dots(game.total, game.done);
-  await tell(card.revealed ? `Well done! That's ${answerName(it)}.` : successText(it, fresh));
+  await tell(LINES.matchWin(it, fresh, card.revealed));
   await sleep(300);
   if (tok !== game.token) return;
   game.busy = false; clearHints();
   if (!game.tray.length) deal(tok);
-  else tell("Great! Now another card.");
+  else tell(LINES.matchNext());
 }
 
 /* ---------------- atlas: a reference map with every name ---------------- */
@@ -1223,14 +1163,14 @@ function startAtlas() {
     const k = b.dataset.cont, c = CONT[k]; sfx.pop(); clearHints();
     const sel = landSel.filter((d) => d.properties.c === k); sel.classed("hintc", true).raise();
     zoomToPoint(c.at, k === "antarctica" ? 1.6 : k === "asia" ? 1.8 : 2.4);
-    tell(`${c.say || c.name}! ${c.fact}`);
+    tell(LINES.atlasCont(k));
   }));
   $$("#legendWrap [data-ocean]").forEach((b) => (b.onclick = () => {
     const o = OCEANS[b.dataset.ocean]; sfx.pop(); clearHints();
     addMark({ type: "ring", at: o.at[0] }); zoomToPoint(o.at[0], 1.8);
-    tell(`The ${o.name}! ${o.fact}`);
+    tell(LINES.exploreOcean(b.dataset.ocean));
   }));
-  tell("This is the Atlas. Pinch or press plus to zoom in, and drag to move around. More names appear as you zoom. Tap any place to hear about it!");
+  tell(LINES.atlasIntro());
 }
 
 /* ---------------- flag fun ---------------- */
@@ -1257,22 +1197,16 @@ function askFlag(tok) {
     : `<div class="fq-ask"><img src="flags/${it.flag}.svg" alt="Whose flag is this?"></div>
        <div class="fq-grid three">${opts.map((c, i) => `<button type="button" class="fq-opt" data-i="${i}"><span class="e" aria-hidden="true">${c.emoji}</span><span>${c.name}</span></button>`).join("")}</div>`;
   $$(".fq-opt", box).forEach((b) => (b.onclick = () => flagAnswer(b, opts[Number(b.dataset.i)])));
-  tell(pickFlag ? `Which one is the flag of ${it.say}?` : "Whose flag is this? Tap the right country!");
+  tell(LINES.flagQuestion(it, pickFlag));
 }
 async function flagAnswer(btn, c) {
   const it = game.cur, tok = game.token, { pickFlag, opts } = game.fq;
   if (game.busy || !it) return;
   if (c !== it.c) {
     sfx.no(); btn.classList.add("no"); game.state.tries++;
-    const what = pickFlag ? `That's the flag of ${sayC(c)}.` : `No, that's not ${sayC(c)}'s flag.`;
-    if (game.state.tries >= 2) {
-      $$("#flagQuiz .fq-opt")[opts.indexOf(it.c)].classList.add("glow");
-      tell(`${what} Look, it's the glowing one!`);
-    } else if (pickFlag) {
-      tell(`${what} Try again! Here's a clue: ${it.c.flagFact}`);
-    } else {
-      tell(`${what} Try again! This country is in ${contSay(it.c.cont)}.`); hintFlash(it);
-    }
+    tell(LINES.flagWrong(it, c, pickFlag, game.state.tries));
+    if (game.state.tries >= 2) $$("#flagQuiz .fq-opt")[opts.indexOf(it.c)].classList.add("glow");
+    else if (!pickFlag) hintFlash(it);
     return;
   }
   game.busy = true; game.last = it;
@@ -1286,7 +1220,7 @@ async function flagAnswer(btn, c) {
   const r = btn.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
   confetti(x, y); if (fresh) flyToStars(it, x, y);
   dots(game.queue.length, game.qi + 1);
-  await tell(`Yes! That's the flag of ${it.say}! ${fresh ? "You won a sticker! " : ""}${it.c.flagFact}`);
+  await tell(LINES.flagWin(it, fresh));
   await sleep(500);
   if (tok !== game.token) return;
   game.qi++; askFlag(tok);
@@ -1299,7 +1233,7 @@ function onTap(hit) {
   else if (game.mode === "find") findTap(hit);
   else if (game.mode === "match") {
     if (game.busy || !hit) return;
-    if (!game.sel) { sfx.no(); tell("First pick a card, then tap the map!"); return; }
+    if (!game.sel) { sfx.no(); tell(LINES.pickCardFirst()); return; }
     place(game.sel, hit);
   }
 }
@@ -1309,14 +1243,13 @@ function endRound() {
   const tok = game.token;
   const newly = openIds().filter((id) => !game.openBefore.includes(id)).map((id) => LEVEL[id].name);
   const n = game.earned.length;
-  let text = n ? `You won ${n} new sticker${n > 1 ? "s" : ""}!` : "You knew them all. Super explorer!";
-  if (newly.length) text += ` New level open: ${newly.join(" and ")}!`;
+  const { text, spoken } = LINES.roundEnd(n, newly);
   $("#celText").textContent = text;
   $("#celStickers").innerHTML = game.earned.map((it) => `<span class="mini" title="${it.name}">${artHTML(it)}</span>`).join("");
   $("#celebrate").hidden = false;
   if (game.last) { celGlobe.highlight = game.last.kind === "ocean" ? null : (f) => matches(game.last, { kind: "country", f }); celGlobe.pin = game.last.kind === "ocean" ? game.last.at : null; spinTo(celGlobe, centerOf(game.last)); }
   sfx.fanfare(); confetti(innerWidth / 2, innerHeight / 3, 120);
-  say(`Hooray! ${text}`);
+  say(spoken);
   $("#againBtn").onclick = () => {
     if (tok !== game.token) return; sfx.pop();
     if (game.mode === "flags") startFlags(); else if (game.mode === "find") startFind(game.level); else startMatch(game.level);
@@ -1339,8 +1272,7 @@ function openBook() {
       b.innerHTML = `<span class="art">${got ? artHTML(it) : "?"}</span><span>${it.name}</span>`;
       b.onclick = () => {
         sfx.pop();
-        if (!got) say(it.level === "flags" ? `Spot the flag of ${it.say} in Flag Fun to win this sticker!` : `Find ${it.level === "capitals" ? sayCap(it.c) : it.say} to win this sticker!`);
-        else say(it.level === "capitals" ? `${sayCap(it.c)} is the capital of ${sayC(it.c)}.` : `${cap1(it.say)}! ${it.fact}`);
+        say(LINES.bookTap(it, got));
       };
       grid.append(b);
     }
@@ -1348,12 +1280,12 @@ function openBook() {
   }
   $("#bookCount").textContent = `${Object.keys(save.stickers).length} of ${total} stickers`;
   show("book");
-  say(`Your sticker book! You have ${Object.keys(save.stickers).length} stickers.`);
+  say(LINES.bookOpen(Object.keys(save.stickers).length));
 }
 
 /* ---------------- sound + grown-ups' corner ---------------- */
 function syncMute() { $$(".muteBtn").forEach((b) => { b.textContent = save.muted ? "🔇" : "🔊"; b.setAttribute("aria-pressed", String(save.muted)); }); }
-$$(".muteBtn").forEach((b) => b.addEventListener("click", () => { save.muted = !save.muted; persist(); syncMute(); if (save.muted && synth) synth.cancel(); else sfx.pop(); }));
+$$(".muteBtn").forEach((b) => b.addEventListener("click", () => { save.muted = !save.muted; persist(); syncMute(); if (save.muted) stopSpeech(); else sfx.pop(); }));
 $("#replay").onclick = () => { audio(); if (lastLine) say(lastLine); };
 
 function syncParent() {
@@ -1372,10 +1304,10 @@ $$(".parentBtn").forEach((btn) => {
     };
     raf = requestAnimationFrame(tick);
   });
-  btn.addEventListener("pointerup", () => { if (performance.now() - t0 < 1500) tell("That button is for grown-ups. Press and hold it."); stop(); });
+  btn.addEventListener("pointerup", () => { if (performance.now() - t0 < 1500) tell(LINES.parentTap()); stop(); });
   btn.addEventListener("pointerleave", stop); btn.addEventListener("pointercancel", stop);
 });
-$$("#rateSeg button").forEach((b) => (b.onclick = () => { save.rate = Number(b.dataset.rate); persist(); syncParent(); say("This is how fast I talk."); }));
+$$("#rateSeg button").forEach((b) => (b.onclick = () => { save.rate = Number(b.dataset.rate); persist(); syncParent(); say(LINES.rateDemo()); }));
 $$("#unlockSeg button").forEach((b) => (b.onclick = () => { save.unlockAll = b.dataset.unlock === "1"; persist(); syncParent(); }));
 let resetArm = false;
 $("#resetBtn").onclick = () => {
@@ -1386,6 +1318,19 @@ $("#parentClose").onclick = () => { $("#parent").hidden = true; if (game.pick &&
 
 /* ---------------- boot ---------------- */
 updateStars(); syncMute();
-fetch("data/world.json").then((r) => r.json()).then((w) => { features = w.features; buildMap(); layout(); const b = $("#startBtn"); b.disabled = false; b.textContent = "Let's go! 🐢"; })
-  .catch(() => { $(".lede").textContent = "The map could not load. Please reload the page."; });
+Promise.all([
+  fetch("data/world-50m.json").then((r) => r.json()),
+  fetch("data/world.json").then((r) => r.json()),
+  fetch("voice/index.json").then((r) => (r.ok ? r.json() : { keys: [] })).catch(() => ({ keys: [] })),
+]).then(([topo, small, voices]) => {
+  const obj = topo.objects.countries;
+  features = topojson.feature(topo, obj).features;
+  // one line per shared border; skip the cut between Russia's European and Asian parts
+  borders = topojson.mesh(topo, obj, (a, b) => a !== b && a.properties.a !== b.properties.a);
+  coast = topojson.mesh(topo, obj, (a, b) => a === b);
+  globeFeatures = small.features;
+  for (const k of voices.keys) recorded.add(k);
+  buildMap(); layout();
+  const b = $("#startBtn"); b.disabled = false; b.textContent = "Let's go! 🐢";
+}).catch(() => { $(".lede").textContent = "The map could not load. Please reload the page."; });
 </script>

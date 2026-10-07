@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Builds ../public/ for Cloudflare: wraps the page (written for claude.ai Artifacts, which add the
-# doctype/head themselves) in a full HTML document and copies the map data and flags next to it.
+# doctype/head themselves) in a full HTML document and copies content.js, the map data, the flags
+# and the recorded voice lines next to it.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 rm -rf public
@@ -19,5 +20,7 @@ HEAD
   cat little-explorer.html
   printf '\n</html>\n'
 } > public/index.html
-cp -R data flags public/
+cp -R data flags content.js public/
+# recorded voice lines are optional: without them the page uses the browser's own speech
+if [ -f voice/index.json ]; then cp -R voice public/; else echo "note: no voice/ recordings, using browser speech"; fi
 echo "public/: $(find public -type f | wc -l | tr -d ' ') files, $(du -sh public | cut -f1)"

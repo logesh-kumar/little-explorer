@@ -22,20 +22,32 @@ A grown-ups' corner (press and hold ⚙️) sets talking speed, opens all levels
 
 - One page, `little-explorer.html`: plain HTML, CSS and JavaScript, with d3 from cdnjs for the map
   projections (a flat Natural Earth map in SVG and an orthographic globe on canvas).
-- Speech uses the browser's built-in `speechSynthesis`; sounds are made with Web Audio.
-- `data/world.json`: country shapes from Natural Earth 1:110m, slimmed to a name, a continent and
-  rounded coordinates. Russia is split at the Urals and French Guiana is split from France, so each
-  part is coloured by its own continent.
+- `content.js` holds the game's data and every sentence Tully says (`LINES`), shared by the page and
+  the voice build.
+- Tully's voice is pre-recorded with ElevenLabs, one MP3 per sentence (`voice/<key>.mp3`, keyed by a
+  hash of the sentence). The page plays the recordings in order and falls back to the browser's
+  `speechSynthesis` for any sentence without one, so it still talks without the recordings.
+- `data/world-50m.json`: Natural Earth 1:50m countries as TopoJSON, used for the flat map and atlas.
+  Shared borders are stored once and drawn as one line (`topojson.mesh`), with coastlines separate.
+- `data/world.json`: Natural Earth 1:110m GeoJSON, light enough for the spinning canvas globe.
+- Russia is split at the Urals and overseas France (French Guiana, the French Caribbean, Réunion and
+  Mayotte) is split from France, so each part is coloured by its own continent.
 - Oceans are not in the map data; the page works out which ocean was tapped from simple
   latitude/longitude boundaries (`oceanAt` in the page).
 
 ## Rebuild and deploy
 
 ```bash
-cd tools && npm install && node build-data.mjs   # data/world.json and flags/
-tools/build-site.sh                             # public/ (full HTML document + data + flags)
+cd tools && npm install && node build-data.mjs   # data/*.json and flags/
+ELEVENLABS_API_KEY=... node build-voice.mjs      # voice/: records only sentences that are new
+cd .. && tools/build-site.sh                    # public/ (full HTML document + data + flags + voice)
 npx wrangler deploy                             # static assets on Cloudflare Workers
 ```
+
+The recordings are not in git (about 24 MB). `build-voice.mjs` reads the key from the environment,
+sends it only to the ElevenLabs API and never writes it to disk; `DRY_RUN=1` counts what is missing,
+and `MAX_COST` caps the credits one run may spend. Rewording a line in `content.js` only re-records
+the sentences that changed.
 
 The page itself has no doctype or `<head>` because it is also published as a claude.ai Artifact,
 which adds them; `build-site.sh` wraps it in a full HTML document for Cloudflare.

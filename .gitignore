@@ -9,8 +9,11 @@ public/
 .env.*
 
 # downloaded source data (tools/build-data.mjs fetches it again)
-tools/ne_110m.geojson
+tools/ne_*.geojson
 
 # OS / editor noise
 .DS_Store
 *.log
+
+# ElevenLabs recordings (regenerate with tools/build-voice.mjs; needs an API key)
+voice/
