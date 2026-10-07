@@ -1,0 +1,9 @@
+{
+  // Static site only: no Worker script, Cloudflare serves ./public directly.
+  "name": "little-explorer",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./public",
+    "not_found_handling": "single-page-application"
+  }
+}

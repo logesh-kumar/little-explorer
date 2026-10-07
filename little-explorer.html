@@ -1,0 +1,1391 @@
+<title>Little Explorer's World</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&family=Baloo+2:wght@500;600;700;800&display=swap">
+<style>
+/* Layout: a one-screen toy. The map is the play table; a "shelf" beside it (tablet/laptop) or under it (phone)
+   holds Tully the guide, the cards to drag and the fact card. One bright daytime look on purpose. */
+:root {
+  --sky: #DDF1FD;
+  --sky-deep: #B9DDF3;
+  --sea: #5BB9EA;
+  --sea-deep: #2E8DC8;
+  --ink: #173A5E;
+  --ink-soft: #4E6E8E;
+  --card: #FFFFFF;
+  --sun: #FFC83D;
+  --sun-deep: #DDA000;
+  --leaf: #4DB35A;
+  --leaf-deep: #2F8A3C;
+  --berry: #EF6A8C;
+  --c-africa: #F5A04B;
+  --c-asia: #F7D347;
+  --c-europe: #A88BE3;
+  --c-namerica: #78C866;
+  --c-samerica: #EF83AA;
+  --c-oceania: #EC6A50;
+  --c-antarctica: #F3FAFF;
+  --c-none: #C9D3DC;
+  --font-play: "Baloo 2", "Arial Rounded MT Bold", "Trebuchet MS", system-ui, sans-serif;
+  --font-read: "Andika", "Trebuchet MS", system-ui, sans-serif;
+  color-scheme: light;
+}
+*, *::before, *::after { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; }
+body {
+  margin: 0; background: var(--sky); color: var(--ink); font-family: var(--font-play);
+  overflow: hidden; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none;
+}
+#app { position: relative; height: 100%; }
+.screen { position: absolute; inset: 0; }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 4px solid var(--ink); outline-offset: 3px; }
+
+.btn {
+  border: 0; border-radius: 999px; padding: .45em 1.4em; min-height: 58px; font-size: 1.3rem; font-weight: 800;
+  background: var(--sun); color: var(--ink); box-shadow: 0 5px 0 var(--sun-deep); transition: transform .08s, box-shadow .08s;
+}
+.btn:disabled { opacity: .6; }
+.btn:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--sun-deep); }
+.btn.plain { background: var(--card); box-shadow: 0 5px 0 var(--sky-deep); }
+.btn.plain:active { box-shadow: 0 1px 0 var(--sky-deep); }
+
+/* ---------- home ---------- */
+#home {
+  display: grid; place-items: center; padding: 24px 16px;
+  background: radial-gradient(circle at 50% 36%, #FFFFFF 0, var(--sky) 52%, var(--sky-deep) 100%);
+}
+.home-inner { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; max-width: 560px; }
+#homeGlobe { width: min(64vw, 44vh, 330px); aspect-ratio: 1; }
+h1 { font-size: clamp(2.2rem, 7vw, 3.6rem); line-height: .95; margin: 0; font-weight: 800; text-wrap: balance; }
+h1 em { font-style: normal; color: var(--sea-deep); display: block; }
+.lede { font-family: var(--font-read); font-size: 1.2rem; margin: 0; color: var(--ink-soft); max-width: 30ch; }
+
+/* ---------- menus ---------- */
+#menu, #levels, #book { overflow-y: auto; padding: 16px; padding-block: 16px 40px; }
+.wrap { max-width: 920px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
+.head { display: flex; align-items: center; gap: 12px; }
+.head h2 { margin: 0; font-size: clamp(1.6rem, 4.5vw, 2.3rem); line-height: 1.05; flex: 1; min-width: 0; text-wrap: balance; }
+.tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+@media (min-width: 760px) { .tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; } }
+.ctas { display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
+@media (min-width: 760px) { .ctas { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); } }
+.tile {
+  position: relative; border: 0; border-radius: 30px; padding: 22px 16px; background: var(--tile, var(--card));
+  box-shadow: 0 7px 0 rgba(23, 58, 94, .2); display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 4px; min-height: 180px; text-align: center; transition: transform .1s;
+}
+.tile:active { transform: translateY(5px); box-shadow: 0 2px 0 rgba(23, 58, 94, .2); }
+.tile .em { font-size: 3.6rem; line-height: 1.1; }
+.tile b { font-size: 1.7rem; line-height: 1.05; }
+.tile small { font-family: var(--font-read); font-size: 1.05rem; color: var(--ink-soft); }
+.tile.locked .em, .tile.locked b { filter: grayscale(1); opacity: .55; }
+.tile .lock { position: absolute; top: 12px; right: 14px; font-size: 1.6rem; }
+.meter { width: 70%; height: 10px; border-radius: 99px; background: rgba(23, 58, 94, .12); overflow: hidden; margin-top: 6px; }
+.meter i { display: block; height: 100%; background: var(--leaf); border-radius: inherit; }
+
+/* ---------- play ---------- */
+#play { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; grid-template-columns: minmax(0, 1fr); }
+.topbar {
+  display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: var(--card);
+  box-shadow: 0 3px 0 var(--sky-deep); z-index: 2;
+}
+.topbar h2 { margin: 0; font-size: 1.4rem; line-height: 1.1; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.icon-btn {
+  flex: none; width: 52px; height: 52px; border-radius: 50%; border: 0; background: var(--sky);
+  font-size: 1.5rem; display: grid; place-items: center; box-shadow: 0 4px 0 var(--sky-deep); position: relative;
+}
+.icon-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--sky-deep); }
+.stars {
+  flex: none; display: flex; align-items: center; gap: 4px; padding: 4px 14px; border-radius: 999px;
+  background: #FFF4CC; font-weight: 800; font-size: 1.25rem; font-variant-numeric: tabular-nums; min-height: 44px;
+}
+.hold::after {
+  content: ""; position: absolute; inset: -5px; border-radius: 50%; pointer-events: none;
+  background: conic-gradient(var(--ink) calc(var(--p, 0) * 360deg), transparent 0);
+  -webkit-mask: radial-gradient(circle, transparent 64%, #000 66%); mask: radial-gradient(circle, transparent 64%, #000 66%);
+}
+
+#stage { position: relative; background: var(--sea-deep); overflow: hidden; touch-action: none; }
+#map { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+#exploreGlobe { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none;
+  background: radial-gradient(circle at 50% 50%, #1D5E92 0, #0F2F52 75%); }
+.stage-tools { position: absolute; right: 12px; bottom: 12px; display: flex; flex-direction: column; gap: 10px; }
+.tool {
+  width: 50px; height: 50px; border-radius: 50%; border: 0; background: var(--card); font-size: 1.5rem; font-weight: 800;
+  display: grid; place-items: center; box-shadow: 0 4px 0 rgba(10, 40, 80, .3);
+}
+.tool:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(10, 40, 80, .3); }
+.stage-pills { position: absolute; left: 12px; top: 12px; display: flex; flex-wrap: wrap; gap: 10px; }
+.pill-btn {
+  border: 0; border-radius: 999px; padding: 6px 16px; min-height: 48px;
+  background: var(--card); font-weight: 800; font-size: 1.1rem; box-shadow: 0 4px 0 rgba(10, 40, 80, .3);
+}
+.pill-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(10, 40, 80, .3); }
+
+.atlas-cta {
+  border: 0; border-radius: 30px; padding: 18px 22px; display: flex; align-items: center; gap: 16px; text-align: left;
+  background: var(--sea-deep); color: #FFFFFF; box-shadow: 0 7px 0 #1D6797; min-height: 96px;
+}
+.atlas-cta:active { transform: translateY(5px); box-shadow: 0 2px 0 #1D6797; }
+.atlas-cta .em { font-size: 3rem; line-height: 1; flex: none; }
+.atlas-cta b { display: block; font-size: 1.7rem; line-height: 1.05; }
+.atlas-cta small { display: block; font-family: var(--font-read); font-size: 1.05rem; opacity: .92; margin-top: 2px; }
+.book-cta { background: var(--leaf); box-shadow: 0 7px 0 var(--leaf-deep); }
+.book-cta:active { box-shadow: 0 2px 0 var(--leaf-deep); }
+.atlas-cta .go { margin-left: auto; flex: none; width: 52px; height: 52px; border-radius: 50%; background: var(--sun); color: var(--ink); display: grid; place-items: center; font-size: 1.6rem; font-weight: 800; }
+
+.legend { background: var(--card); border-radius: 24px; padding: 14px 16px 16px; box-shadow: 0 5px 0 var(--sky-deep); display: flex; flex-direction: column; gap: 8px; }
+.legend h4 { margin: 4px 0 0; font-size: 1.1rem; color: var(--ink-soft); letter-spacing: .04em; text-transform: uppercase; }
+.leg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.leg {
+  border: 0; border-radius: 16px; background: var(--sky); padding: 6px 10px; min-height: 48px; display: flex; align-items: center; gap: 8px;
+  font-weight: 800; font-size: 1rem; line-height: 1.05; text-align: left;
+}
+.leg i { flex: none; width: 22px; height: 22px; border-radius: 6px; background: var(--sw); box-shadow: inset 0 0 0 2px rgba(23, 58, 94, .15); }
+.leg .e { font-size: 1.3rem; }
+
+#flagQuiz { display: flex; flex-direction: column; gap: 12px; }
+.fq-ask { background: var(--card); border-radius: 24px; padding: 12px 16px; box-shadow: 0 5px 0 var(--sky-deep); display: flex; align-items: center; gap: 14px; }
+.fq-ask .e { font-size: 3rem; line-height: 1; }
+.fq-ask b { font-size: 1.8rem; line-height: 1.05; }
+.fq-ask img { width: min(200px, 60%); aspect-ratio: 4 / 3; border-radius: 10px; box-shadow: 0 0 0 1px rgba(23, 58, 94, .15); margin: 0 auto; display: block; }
+.fq-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.fq-opt {
+  border: 0; border-radius: 22px; background: var(--card); box-shadow: 0 5px 0 var(--sky-deep); padding: 12px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 96px;
+}
+.fq-opt:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--sky-deep); }
+.fq-opt img { width: 100%; max-width: 132px; aspect-ratio: 4 / 3; border-radius: 8px; box-shadow: 0 0 0 1px rgba(23, 58, 94, .15); }
+.fq-opt .e { font-size: 2.4rem; line-height: 1; }
+.fq-opt span { font-weight: 800; font-size: 1.1rem; line-height: 1.05; text-align: center; }
+.fq-opt.no { opacity: .3; pointer-events: none; }
+.fq-opt.yes { box-shadow: 0 0 0 5px var(--leaf), 0 5px 0 var(--leaf-deep); }
+.fq-opt.glow { animation: optglow .7s ease-in-out infinite alternate; }
+@keyframes optglow { to { box-shadow: 0 0 0 6px var(--sun), 0 5px 0 var(--sun-deep); } }
+.fq-grid.three { grid-template-columns: repeat(3, 1fr); }
+
+.lbl-name { font-weight: 700; font-size: 11px; fill: var(--ink); paint-order: stroke; stroke: #FFFFFF; stroke-width: 3px; stroke-linejoin: round; }
+.lbl-name.big { font-size: 12.5px; font-weight: 800; }
+
+.sea { fill: var(--sea); }
+.grat { fill: none; stroke: #FFFFFF; stroke-opacity: .2; stroke-width: .6; vector-effect: non-scaling-stroke; pointer-events: none; }
+.land { stroke: #FFFFFF; stroke-width: .7; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.land.sel { fill: var(--sun); stroke: var(--ink); stroke-width: 1.8; }
+.land.glow { stroke: var(--sun-deep); stroke-width: 2.6; animation: glow .75s ease-in-out infinite alternate; }
+@keyframes glow { from { fill: #FFE066; } to { fill: #FFF8D6; } }
+.land.win { fill: var(--leaf); stroke: #FFFFFF; stroke-width: 1.8; }
+.land.hintc { animation: blink .45s ease-in-out 6 alternate; }
+@keyframes blink { to { fill: #FFFFFF; } }
+.land.oops { animation: oops .3s ease-in-out 2 alternate; }
+@keyframes oops { to { fill: var(--berry); } }
+.hit { fill: transparent; stroke: transparent; stroke-width: 28; vector-effect: non-scaling-stroke; stroke-linejoin: round; pointer-events: all; }
+.labels, .marks { pointer-events: none; }
+.labels text, .marks text { text-anchor: middle; dominant-baseline: central; }
+.lbl-ocean { font-style: italic; font-weight: 700; font-size: 14px; fill: #FFFFFF; letter-spacing: .05em; }
+.lbl-cont { font-weight: 800; font-size: 15px; fill: var(--ink); paint-order: stroke; stroke: #FFFFFF; stroke-width: 4px; stroke-linejoin: round; }
+.mk-emoji { font-size: 26px; }
+.mk-name { font-weight: 800; font-size: 13px; fill: var(--ink); paint-order: stroke; stroke: #FFFFFF; stroke-width: 4px; stroke-linejoin: round; }
+.mk-star { font-size: 20px; }
+.ring circle { fill: none; stroke: var(--sun); stroke-width: 5; transform-box: fill-box; transform-origin: center; animation: ring 1.2s ease-out infinite; }
+.ring circle + circle { animation-delay: .6s; }
+@keyframes ring { from { transform: scale(.35); opacity: 1; } to { transform: scale(1.5); opacity: 0; } }
+
+#side { display: flex; flex-direction: column; gap: 12px; padding: 12px 16px 16px; background: var(--sky); max-height: 50vh; overflow-y: auto; }
+.guide { display: flex; gap: 12px; align-items: flex-start; }
+.tully {
+  flex: none; width: 66px; height: 66px; border-radius: 50%; background: var(--card); display: grid; place-items: center;
+  font-size: 2.5rem; box-shadow: 0 4px 0 var(--sky-deep); animation: bob 2.6s ease-in-out infinite;
+}
+@keyframes bob { 50% { transform: translateY(-4px) rotate(-4deg); } }
+.bubble {
+  position: relative; flex: 1; min-width: 0; background: var(--card); border-radius: 22px; padding: 12px 52px 12px 16px;
+  font-family: var(--font-read); font-size: 1.25rem; line-height: 1.35; box-shadow: 0 4px 0 var(--sky-deep); min-height: 66px;
+}
+.bubble::before {
+  content: ""; position: absolute; left: -9px; top: 22px; border: 10px solid transparent; border-left: 0; border-right-color: var(--card);
+}
+#replay { position: absolute; right: 6px; top: 6px; width: 42px; height: 42px; border: 0; border-radius: 50%; background: var(--sky); font-size: 1.2rem; }
+.dots { display: flex; gap: 8px; justify-content: center; }
+.dot { width: 16px; height: 16px; border-radius: 50%; background: var(--card); border: 3px solid var(--sky-deep); }
+.dot.on { background: var(--leaf); border-color: var(--leaf-deep); }
+
+.tray { display: flex; gap: 10px; }
+.mcard {
+  flex: 1 1 0; min-width: 0; min-height: 104px; border: 0; border-radius: 22px; background: var(--card);
+  box-shadow: 0 5px 0 var(--sky-deep); display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px; padding: 8px 6px; touch-action: none;
+}
+.mcard .art { font-size: 2.6rem; line-height: 1; }
+.mcard img { width: 58px; height: 44px; border-radius: 6px; box-shadow: 0 0 0 1px rgba(23, 58, 94, .15); }
+.mcard span { font-size: 1.05rem; font-weight: 800; line-height: 1.05; text-align: center; overflow-wrap: anywhere; }
+.mcard.sel { box-shadow: 0 0 0 4px var(--sun), 0 5px 0 var(--sun-deep); }
+.mcard.lifted { opacity: .3; }
+.ghost { position: fixed; left: 0; top: 0; z-index: 50; pointer-events: none; width: 116px; min-height: 104px; box-shadow: 0 16px 28px rgba(23, 58, 94, .35); }
+.empty-tray { font-family: var(--font-read); color: var(--ink-soft); text-align: center; flex: 1; padding: 20px; }
+
+.sheet { background: var(--card); border-radius: 24px; padding: 14px 16px; box-shadow: 0 5px 0 var(--sky-deep); display: flex; gap: 14px; align-items: flex-start; }
+.sheet .art { flex: none; display: flex; flex-direction: column; align-items: center; gap: 8px; font-size: 3.2rem; line-height: 1; }
+.sheet .art img { width: 66px; height: 50px; border-radius: 6px; box-shadow: 0 0 0 1px rgba(23, 58, 94, .15); }
+.sheet .body { min-width: 0; }
+.sheet h3 { margin: 0; font-size: 1.75rem; line-height: 1.05; text-wrap: balance; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.chip { padding: 1px 12px; border-radius: 999px; background: var(--chip); font-weight: 800; font-size: .95rem; box-shadow: inset 0 0 0 2px rgba(23, 58, 94, .12); }
+.sheet p { font-family: var(--font-read); font-size: 1.15rem; line-height: 1.4; margin: 8px 0 0; }
+.sheet .cap { font-family: var(--font-play); font-weight: 700; }
+
+/* phones and portrait tablets: in Flag Fun the question panel matters more than the map */
+@media (max-width: 879px), (max-aspect-ratio: 5/4) {
+  #play[data-mode="flags"] #side { max-height: 66vh; }
+  .fq-opt { min-height: 72px; padding: 8px; }
+  .fq-opt img { max-width: 112px; }
+  .fq-ask { padding: 8px 14px; }
+  .fq-ask img { width: min(150px, 46%); }
+  .fq-ask .e { font-size: 2.4rem; }
+  .fq-ask b { font-size: 1.5rem; }
+}
+@media (min-width: 880px) and (min-aspect-ratio: 5/4) {
+  #play { grid-template-columns: minmax(0, 1fr) 370px; grid-template-rows: auto minmax(0, 1fr); }
+  .topbar { grid-column: 1 / -1; }
+  #side { max-height: none; padding: 18px; gap: 16px; }
+  .tray { flex-direction: column; }
+  .mcard { flex: none; flex-direction: row; justify-content: flex-start; gap: 14px; padding: 12px 18px; min-height: 84px; }
+  .mcard span { font-size: 1.3rem; text-align: left; }
+}
+
+/* ---------- overlays ---------- */
+.overlay { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: 16px; background: rgba(23, 58, 94, .55); }
+.pop-card {
+  background: var(--card); border-radius: 34px; padding: 22px 20px 24px; width: 100%; max-width: 470px; max-height: 100%;
+  overflow-y: auto; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center;
+  box-shadow: 0 10px 0 rgba(23, 58, 94, .25); animation: popin .35s cubic-bezier(.2, 1.4, .5, 1);
+}
+@keyframes popin { from { transform: scale(.85); opacity: 0; } }
+#celGlobe { width: min(210px, 46vw, 30vh); aspect-ratio: 1; }
+.pop-card h2 { margin: 0; font-size: 2.4rem; line-height: 1; }
+.pop-card p { margin: 0; font-family: var(--font-read); font-size: 1.2rem; line-height: 1.4; }
+.cel-stickers { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.mini { width: 54px; height: 54px; border-radius: 50%; background: var(--sky); display: grid; place-items: center; font-size: 1.8rem; }
+.mini img { width: 34px; height: 26px; border-radius: 4px; }
+.buttons { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 6px; }
+
+.settings { width: 100%; display: flex; flex-direction: column; gap: 14px; text-align: left; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 1.15rem; font-weight: 700; }
+.seg { display: flex; border-radius: 999px; background: var(--sky); padding: 4px; }
+.seg button { border: 0; background: none; border-radius: 999px; padding: 6px 14px; font-weight: 800; min-height: 42px; }
+.seg button[aria-pressed="true"] { background: var(--card); box-shadow: 0 2px 0 var(--sky-deep); }
+.note { font-family: var(--font-read); font-size: .98rem; color: var(--ink-soft); }
+
+/* ---------- sticker book ---------- */
+.book-head { background: var(--card); border-radius: 26px; padding: 16px 18px; box-shadow: 0 5px 0 var(--sky-deep); display: flex; gap: 14px; align-items: center; }
+.book-head .big { font-size: 3rem; }
+.book-head p { margin: 0; font-family: var(--font-read); font-size: 1.15rem; color: var(--ink-soft); }
+.book-head b { font-size: 1.5rem; display: block; color: var(--ink); font-family: var(--font-play); font-variant-numeric: tabular-nums; }
+.book-sec h3 { margin: 6px 0 10px; font-size: 1.5rem; display: flex; gap: 8px; align-items: baseline; }
+.book-sec h3 small { font-size: 1rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.stickers { display: grid; grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: 12px; }
+.sticker {
+  border: 0; background: var(--card); border-radius: 22px; padding: 12px 6px 10px; display: flex; flex-direction: column;
+  align-items: center; gap: 6px; box-shadow: 0 4px 0 var(--sky-deep); min-height: 120px;
+}
+.sticker .art { width: 66px; height: 66px; border-radius: 50%; display: grid; place-items: center; font-size: 2.3rem; background: var(--sky); transform: rotate(-5deg); }
+.sticker:nth-child(even) .art { transform: rotate(6deg); }
+.sticker .art img { width: 46px; height: 34px; border-radius: 4px; }
+.sticker span { font-size: 1rem; font-weight: 800; line-height: 1.05; text-align: center; overflow-wrap: anywhere; }
+.sticker.empty .art { background: none; border: 3px dashed #A9C7DD; color: #9BB9D0; font-size: 1.7rem; font-weight: 800; transform: none; }
+.sticker.empty span { color: #86A2BA; }
+
+.fly { position: fixed; left: 0; top: 0; z-index: 60; pointer-events: none; font-size: 2.4rem; transition: transform .8s cubic-bezier(.5, -.3, .7, 1), opacity .8s; }
+.fly img { width: 48px; height: 36px; border-radius: 4px; }
+#confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 70; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  .land.glow { fill: #FFE066; }
+}
+</style>
+
+<div id="app">
+  <section id="home" class="screen">
+    <div class="home-inner">
+      <canvas id="homeGlobe" aria-hidden="true"></canvas>
+      <h1>Little Explorer's <em>World</em></h1>
+      <p class="lede">Find oceans, continents and countries with Tully the turtle.</p>
+      <button class="btn" id="startBtn" type="button" disabled>Loading the map…</button>
+    </div>
+  </section>
+
+  <section id="menu" class="screen" hidden>
+    <div class="wrap">
+      <div class="head">
+        <div class="tully" aria-hidden="true">🐢</div>
+        <h2>What shall we play?</h2>
+        <div class="stars" aria-label="Stickers"><span aria-hidden="true">⭐</span><span class="starCount">0</span></div>
+      </div>
+      <div class="tiles">
+        <button class="tile" type="button" data-go="explore" style="--tile:#C7EBFC"><span class="em">🔍</span><b>Explore</b><small>Tap anything to learn about it</small></button>
+        <button class="tile" type="button" data-go="find" style="--tile:#FFE89E"><span class="em">🎯</span><b>Find It!</b><small>Tully asks, you tap the map</small></button>
+        <button class="tile" type="button" data-go="match" style="--tile:#FFD3E0"><span class="em">🧩</span><b>Match It</b><small>Take each card to its home</small></button>
+        <button class="tile" type="button" data-go="flags" style="--tile:#E3D8FB"><span class="em">🏁</span><b>Flag Fun</b><small>Spot the right flag</small></button>
+      </div>
+      <div class="ctas">
+        <button class="atlas-cta" type="button" data-go="atlas">
+          <span class="em" aria-hidden="true">📖</span>
+          <span><b>Open the Atlas</b><small>Every country, continent and ocean, with its name. Zoom in to see more.</small></span>
+          <span class="go" aria-hidden="true">➜</span>
+        </button>
+        <button class="atlas-cta book-cta" type="button" data-go="book">
+          <span class="em" aria-hidden="true">📒</span>
+          <span><b>Sticker Book</b><small>Every sticker you won</small></span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <section id="levels" class="screen" hidden>
+    <div class="wrap">
+      <div class="head">
+        <button class="icon-btn" type="button" data-back aria-label="Back">⬅️</button>
+        <h2 id="levelsTitle">Find It! Pick a level</h2>
+      </div>
+      <div class="tiles" id="levelTiles"></div>
+    </div>
+  </section>
+
+  <section id="play" class="screen" hidden>
+    <header class="topbar">
+      <button class="icon-btn" type="button" id="homeBtn" aria-label="Back to games">🏠</button>
+      <h2 id="modeTitle">Explore</h2>
+      <div class="stars" aria-label="Stickers"><span aria-hidden="true">⭐</span><span class="starCount">0</span></div>
+      <button class="icon-btn muteBtn" type="button" aria-label="Sound on or off">🔊</button>
+      <button class="icon-btn hold parentBtn" type="button" aria-label="Grown-ups: press and hold">⚙️</button>
+    </header>
+    <div id="stage">
+      <svg id="map" role="img" aria-label="World map"></svg>
+      <canvas id="exploreGlobe" hidden aria-label="Spinning globe"></canvas>
+      <div class="stage-pills">
+        <button class="pill-btn" id="globeToggle" type="button" hidden>🌍 Globe</button>
+        <button class="pill-btn" id="atlasBtn" type="button" hidden>📖 Atlas</button>
+      </div>
+      <div class="stage-tools">
+        <button class="tool" type="button" id="zoomIn" aria-label="Zoom in">＋</button>
+        <button class="tool" type="button" id="zoomOut" aria-label="Zoom out">－</button>
+        <button class="tool" type="button" id="zoomHome" aria-label="Show the whole world">🌐</button>
+      </div>
+    </div>
+    <aside id="side">
+      <div class="guide">
+        <div class="tully" aria-hidden="true">🐢</div>
+        <div class="bubble" aria-live="polite"><span id="bubbleText">Tap anywhere on the map!</span><button id="replay" type="button" aria-label="Say it again">🔊</button></div>
+      </div>
+      <div class="dots" id="dots"></div>
+      <div class="tray" id="tray" hidden></div>
+      <div id="flagQuiz" hidden></div>
+      <div id="sheetWrap"></div>
+      <div id="legendWrap" hidden></div>
+    </aside>
+  </section>
+
+  <section id="book" class="screen" hidden>
+    <div class="wrap">
+      <div class="head">
+        <button class="icon-btn" type="button" data-back aria-label="Back">⬅️</button>
+        <h2>My Sticker Book</h2>
+      </div>
+      <div class="book-head"><span class="big" aria-hidden="true">🐢</span><div><b id="bookCount">0 stickers</b><p>Win a sticker the first time you find or match a place.</p></div></div>
+      <div id="bookBody" class="wrap"></div>
+    </div>
+  </section>
+
+  <div id="celebrate" class="overlay" hidden>
+    <div class="pop-card">
+      <canvas id="celGlobe" aria-hidden="true"></canvas>
+      <h2>Hooray!</h2>
+      <p id="celText"></p>
+      <div class="cel-stickers" id="celStickers"></div>
+      <div class="buttons">
+        <button class="btn" type="button" id="againBtn">Play again</button>
+        <button class="btn plain" type="button" id="celMenuBtn">More games</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="parent" class="overlay" hidden>
+    <div class="pop-card">
+      <h2 style="font-size:1.8rem">Grown-ups' corner</h2>
+      <div class="settings">
+        <div class="row"><span>Tully's talking speed</span>
+          <div class="seg" id="rateSeg"><button type="button" data-rate="0.8">Slow</button><button type="button" data-rate="0.95">Normal</button></div></div>
+        <div class="row"><span>Open every level</span>
+          <div class="seg" id="unlockSeg"><button type="button" data-unlock="0">No</button><button type="button" data-unlock="1">Yes</button></div></div>
+        <p class="note">Levels normally open one by one: 3 oceans open Continents, 4 continents open Countries, 8 countries open Capitals.</p>
+        <div class="row"><span>Stickers</span><button class="btn plain" type="button" id="resetBtn" style="min-height:46px;font-size:1.05rem">Reset stickers</button></div>
+        <p class="note">Progress is saved in this browser only.</p>
+      </div>
+      <div class="buttons"><button class="btn" type="button" id="parentClose">Done</button></div>
+    </div>
+  </div>
+  <canvas id="confetti" aria-hidden="true"></canvas>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script>
+"use strict";
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const cap1 = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+const shuffle = (a) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+/* ---------------- content ---------------- */
+const CONT = {
+  asia:       { name: "Asia", color: "yellow", emoji: "🐼", at: [92, 48], lbl: [88, 56], fact: "Asia is the biggest continent, and more people live there than anywhere else." },
+  africa:     { name: "Africa", color: "orange", emoji: "🦁", at: [19, 6], fact: "Africa has lions and giraffes, and the Nile, the longest river in the world." },
+  europe:     { name: "Europe", color: "purple", emoji: "🏰", at: [18, 53], fact: "Europe has lots of countries close together, and many old castles." },
+  namerica:   { name: "North America", color: "green", emoji: "🦅", at: [-102, 46], lbl: [-100, 49], fact: "North America goes from icy Greenland all the way down to sunny Mexico." },
+  samerica:   { name: "South America", color: "pink", emoji: "🦜", at: [-60, -14], lbl: [-62, -25], fact: "South America has the Amazon, the biggest rainforest in the world." },
+  oceania:    { name: "Australia & Oceania", say: "Australia and Oceania", color: "red", emoji: "🦘", at: [134, -25], lbl: [138, -43], fact: "Kangaroos and koalas live in Australia, and Oceania has thousands of islands." },
+  antarctica: { name: "Antarctica", color: "white", emoji: "🐧", at: [30, -80], fact: "Antarctica is the coldest place on Earth. It is covered in ice, and penguins live there." },
+};
+const OCEANS = {
+  pacific:  { name: "Pacific Ocean", emoji: "🐙", at: [[-140, 2], [156, 12]], fact: "The Pacific is the biggest and deepest ocean in the world.", hint: "It is the biggest ocean, between Asia and the Americas." },
+  atlantic: { name: "Atlantic Ocean", emoji: "🐬", at: [[-40, 22]], fact: "The Atlantic is the second biggest ocean. Ships cross it to sail between Europe and America.", hint: "It is between the Americas and Africa." },
+  indian:   { name: "Indian Ocean", emoji: "🐢", at: [[78, -20]], fact: "The Indian Ocean is the warmest ocean. Sea turtles love it there!", hint: "Look below India!" },
+  southern: { name: "Southern Ocean", emoji: "🐳", at: [[20, -63], [-120, -64]], fact: "The Southern Ocean swirls all the way around icy Antarctica.", hint: "It goes all the way around Antarctica, at the bottom of the world." },
+  arctic:   { name: "Arctic Ocean", emoji: "🧊", at: [[20, 84.5]], fact: "The Arctic Ocean is at the top of the world. It is so cold that it is often frozen.", hint: "Look at the very top of the world." },
+};
+const COUNTRIES = [
+  { a: "IND", name: "India", cont: "asia", iso: "in", emoji: "🐅", cap: "New Delhi", capAt: [77.21, 28.61], fact: "Tigers live in India, and so does the beautiful Taj Mahal.", flagFact: "India's flag is orange, white and green, with a blue wheel in the middle." },
+  { a: "CHN", name: "China", cont: "asia", iso: "cn", emoji: "🐼", cap: "Beijing", capAt: [116.40, 39.90], fact: "Giant pandas live in China, and the Great Wall there is super long.", flagFact: "China's flag is red, with five yellow stars." },
+  { a: "JPN", name: "Japan", cont: "asia", iso: "jp", emoji: "🗻", cap: "Tokyo", capAt: [139.69, 35.69], fact: "Japan is made of islands, and Mount Fuji is its tallest mountain.", flagFact: "Japan's flag is white, with a big red circle like the sun." },
+  { a: "IDN", name: "Indonesia", cont: "asia", iso: "id", emoji: "🦎", cap: "Jakarta", capAt: [106.85, -6.21], fact: "Indonesia has thousands of islands, and real Komodo dragons live there.", flagFact: "Indonesia's flag is red on top and white on the bottom." },
+  { a: "THA", name: "Thailand", cont: "asia", iso: "th", emoji: "🐘", cap: "Bangkok", capAt: [100.50, 13.76], fact: "Elephants are a very special animal in Thailand.", flagFact: "Thailand's flag has red, white and blue stripes." },
+  { a: "SAU", name: "Saudi Arabia", cont: "asia", iso: "sa", emoji: "🐪", cap: "Riyadh", capAt: [46.68, 24.71], fact: "Saudi Arabia is mostly sandy desert, and camels walk across it.", flagFact: "Saudi Arabia's flag is green, with white writing and a sword." },
+  { a: "NPL", name: "Nepal", cont: "asia", iso: "np", emoji: "🏔️", cap: "Kathmandu", capAt: [85.32, 27.72], fact: "Mount Everest, the tallest mountain in the world, is in Nepal.", flagFact: "Nepal's flag is made of two triangles. It is the only country flag that is not a rectangle!" },
+  { a: "EGY", name: "Egypt", cont: "africa", iso: "eg", emoji: "🐊", cap: "Cairo", capAt: [31.24, 30.04], fact: "Egypt has the great pyramids, and crocodiles swim in its river, the Nile.", flagFact: "Egypt's flag is red, white and black, with a golden eagle." },
+  { a: "KEN", name: "Kenya", cont: "africa", iso: "ke", emoji: "🦒", cap: "Nairobi", capAt: [36.82, -1.29], fact: "Giraffes, zebras and lions roam across Kenya.", flagFact: "Kenya's flag is black, red and green, with a shield and two spears." },
+  { a: "ZAF", name: "South Africa", cont: "africa", iso: "za", emoji: "🦏", cap: "Pretoria", capAt: [28.19, -25.75], fact: "Rhinos live in South Africa, and penguins play on some of its beaches!", flagFact: "South Africa's flag is very colourful, with a big sideways Y shape." },
+  { a: "NGA", name: "Nigeria", cont: "africa", iso: "ng", emoji: "🥁", cap: "Abuja", capAt: [7.49, 9.06], fact: "More people live in Nigeria than in any other country in Africa.", flagFact: "Nigeria's flag is green, white and green." },
+  { a: "MAR", name: "Morocco", cont: "africa", iso: "ma", emoji: "🏜️", cap: "Rabat", capAt: [-6.84, 34.02], fact: "Morocco has snowy mountains and the edge of the giant Sahara Desert.", flagFact: "Morocco's flag is red, with a green star." },
+  { a: "GBR", name: "United Kingdom", say: "the United Kingdom", cont: "europe", iso: "gb", emoji: "👑", cap: "London", capAt: [-0.13, 51.51], fact: "The United Kingdom has a king, and a famous clock tower called Big Ben.", flagFact: "The United Kingdom's flag has blue, red and white crosses. People call it the Union Jack." },
+  { a: "FRA", name: "France", cont: "europe", iso: "fr", emoji: "🥐", cap: "Paris", capAt: [2.35, 48.86], fact: "France is famous for the tall Eiffel Tower and yummy croissants.", flagFact: "France's flag has blue, white and red stripes standing up." },
+  { a: "ITA", name: "Italy", cont: "europe", iso: "it", emoji: "🍕", cap: "Rome", capAt: [12.50, 41.90], fact: "Pizza comes from Italy! On the map, Italy looks like a boot.", flagFact: "Italy's flag has green, white and red stripes standing up." },
+  { a: "ESP", name: "Spain", cont: "europe", iso: "es", emoji: "💃", cap: "Madrid", capAt: [-3.70, 40.42], fact: "Spain is sunny, with sandy beaches and flamenco dancing.", flagFact: "Spain's flag has red and yellow stripes." },
+  { a: "DEU", name: "Germany", cont: "europe", iso: "de", emoji: "🏰", cap: "Berlin", capAt: [13.40, 52.52], fact: "Germany has fairy-tale castles and big, dark forests.", flagFact: "Germany's flag has black, red and gold stripes." },
+  { a: "RUS", name: "Russia", cont: "europe", also: "asia", iso: "ru", emoji: "🐻", cap: "Moscow", capAt: [37.62, 55.76], fact: "Russia is the biggest country in the world. It is in Europe and Asia, and brown bears live in its forests.", flagFact: "Russia's flag has white, blue and red stripes." },
+  { a: "NOR", name: "Norway", cont: "europe", iso: "no", emoji: "🌌", cap: "Oslo", capAt: [10.75, 59.91], fact: "In Norway, you can see the colourful northern lights dance in the sky.", flagFact: "Norway's flag is red, with a blue and white cross." },
+  { a: "USA", name: "United States", say: "the United States", cont: "namerica", iso: "us", emoji: "🗽", cap: "Washington, D.C.", capSay: "Washington D C", capAt: [-77.04, 38.91], fact: "The Statue of Liberty is in the United States. She is a giant green lady holding a torch.", flagFact: "The United States' flag has 50 white stars and 13 red and white stripes." },
+  { a: "CAN", name: "Canada", cont: "namerica", iso: "ca", emoji: "🍁", cap: "Ottawa", capAt: [-75.70, 45.42], fact: "Canada has a maple leaf on its flag, and moose live in its forests.", flagFact: "Canada's flag is red and white, with a red maple leaf." },
+  { a: "MEX", name: "Mexico", cont: "namerica", iso: "mx", emoji: "🌮", cap: "Mexico City", capAt: [-99.13, 19.43], fact: "Tacos come from Mexico, and so do lots of colourful festivals.", flagFact: "Mexico's flag is green, white and red, with an eagle holding a snake." },
+  { a: "BRA", name: "Brazil", cont: "samerica", iso: "br", emoji: "🦜", cap: "Brasília", capSay: "Brasilia", capAt: [-47.88, -15.79], fact: "Most of the Amazon rainforest is in Brazil, full of parrots and monkeys.", flagFact: "Brazil's flag is green, with a yellow diamond and a blue starry circle." },
+  { a: "ARG", name: "Argentina", cont: "samerica", iso: "ar", emoji: "🐎", cap: "Buenos Aires", capAt: [-58.38, -34.60], fact: "In Argentina, cowboys called gauchos ride horses across wide grassy plains.", flagFact: "Argentina's flag is light blue and white, with a smiling sun." },
+  { a: "PER", name: "Peru", cont: "samerica", iso: "pe", emoji: "🦙", cap: "Lima", capAt: [-77.04, -12.05], fact: "Fluffy llamas live high up in the mountains of Peru.", flagFact: "Peru's flag has red, white and red stripes standing up." },
+  { a: "CHL", name: "Chile", cont: "samerica", iso: "cl", emoji: "🌋", cap: "Santiago", capAt: [-70.67, -33.45], fact: "Chile is very long and thin, and it has lots of volcanoes.", flagFact: "Chile's flag is white and red, with a white star on a blue square." },
+  { a: "AUS", name: "Australia", cont: "oceania", iso: "au", emoji: "🦘", cap: "Canberra", capAt: [149.13, -35.28], fact: "Kangaroos hop around Australia, and koalas sleep in its trees.", flagFact: "Australia's flag is dark blue, with the Union Jack and white stars." },
+  { a: "NZL", name: "New Zealand", cont: "oceania", iso: "nz", emoji: "🐑", cap: "Wellington", capAt: [174.78, -41.29], fact: "New Zealand has more sheep than people!", flagFact: "New Zealand's flag is dark blue, with the Union Jack and four red stars." },
+];
+const BY_ADM = Object.fromEntries(COUNTRIES.map((c) => [c.a, c]));
+const sayC = (c) => c.say || c.name;
+const sayCap = (c) => c.capSay || c.cap;
+const contSay = (k) => (k ? CONT[k].say || CONT[k].name : "the ocean");
+
+const LEVELS = [
+  { id: "oceans", name: "Oceans", emoji: "🌊", blurb: "5 big oceans", prefix: "o:" },
+  { id: "continents", name: "Continents", emoji: "🗺️", blurb: "7 continents", prefix: "c:", need: ["oceans", 3] },
+  { id: "countries", name: "Countries", emoji: "🚩", blurb: "28 countries", prefix: "n:", need: ["continents", 4] },
+  { id: "capitals", name: "Capitals", emoji: "⭐", blurb: "Expert level", prefix: "k:", need: ["countries", 8] },
+];
+const BOOK = [...LEVELS, { id: "flags", name: "Flags", emoji: "🏁", prefix: "f:" }];
+const LEVEL = Object.fromEntries(BOOK.map((l) => [l.id, l]));
+
+function itemsFor(level) {
+  if (level === "flags") return COUNTRIES.map((c) => ({ id: "f:" + c.a, level, kind: "country", key: c.a, c, name: c.name, say: sayC(c), emoji: c.emoji, flag: c.iso, at: c.capAt, fact: c.flagFact }));
+  if (level === "oceans") return Object.entries(OCEANS).map(([k, o]) => ({ id: "o:" + k, level, kind: "ocean", key: k, name: o.name, say: "the " + o.name, emoji: o.emoji, at: o.at[0], fact: o.fact }));
+  if (level === "continents") return Object.entries(CONT).map(([k, c]) => ({ id: "c:" + k, level, kind: "cont", key: k, name: c.name, say: c.say || c.name, emoji: c.emoji, at: c.at, fact: c.fact }));
+  const capitals = level === "capitals";
+  return COUNTRIES.map((c) => ({
+    id: (capitals ? "k:" : "n:") + c.a, level, kind: "country", key: c.a, c,
+    name: capitals ? c.cap : c.name, say: capitals ? sayCap(c) : sayC(c),
+    emoji: capitals ? "⭐" : c.emoji, flag: capitals ? null : c.iso, at: c.capAt, fact: c.fact,
+  }));
+}
+
+/* ---------------- saved progress (this browser only) ---------------- */
+const KEY = "little-explorer-v1";
+const save = (() => {
+  const d = { stickers: {}, rate: 0.95, unlockAll: false, muted: false };
+  try { return { ...d, ...JSON.parse(localStorage.getItem(KEY) || "{}") }; } catch { return d; }
+})();
+function persist() { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch {} }
+const countOf = (lvl) => Object.keys(save.stickers).filter((k) => k.startsWith(LEVEL[lvl].prefix)).length;
+const isOpen = (L) => save.unlockAll || !L.need || countOf(L.need[0]) >= L.need[1];
+const openIds = () => LEVELS.filter(isOpen).map((l) => l.id);
+function award(it) {
+  if (save.stickers[it.id]) return false;
+  save.stickers[it.id] = 1; persist(); updateStars(); return true;
+}
+function updateStars() { const n = Object.keys(save.stickers).length; $$(".starCount").forEach((e) => (e.textContent = n)); }
+
+/* ---------------- voice + sounds ---------------- */
+const synth = "speechSynthesis" in window ? window.speechSynthesis : null;
+let voice = null;
+function pickVoice() {
+  if (!synth) return;
+  const vs = synth.getVoices().filter((v) => /^en/i.test(v.lang));
+  const pref = ["Samantha", "Google US English", "Karen", "Moira", "Microsoft Aria", "Microsoft Jenny", "Google UK English Female", "Daniel"];
+  voice = pref.map((n) => vs.find((v) => v.name.includes(n))).find(Boolean) || vs.find((v) => v.lang === "en-US") || vs[0] || null;
+}
+if (synth) { pickVoice(); synth.onvoiceschanged = pickVoice; }
+function say(text) {
+  return new Promise((res) => {
+    const est = Math.min(9000, 900 + text.length * 62);
+    if (save.muted || !synth) { setTimeout(res, Math.min(1500, est)); return; }
+    let done = false; const fin = () => { if (!done) { done = true; res(); } };
+    try {
+      synth.cancel();
+      const u = new SpeechSynthesisUtterance(text);
+      if (voice) u.voice = voice;
+      u.lang = voice ? voice.lang : "en-US"; u.rate = save.rate; u.pitch = 1.12;
+      u.onend = fin; u.onerror = fin;
+      synth.speak(u);
+    } catch { fin(); }
+    setTimeout(fin, est / save.rate + 1200);
+  });
+}
+let lastLine = "";
+function tell(text) { lastLine = text; $("#bubbleText").textContent = text; return say(text); }
+
+let ac = null;
+function audio() {
+  if (!ac) { try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch { return null; } }
+  if (ac.state === "suspended") ac.resume();
+  return ac;
+}
+function notes(list, { type = "triangle", step = 0.09, len = 0.2, vol = 0.12 } = {}) {
+  if (save.muted) return; const a = audio(); if (!a) return;
+  const t0 = a.currentTime + 0.01;
+  list.forEach((f, i) => {
+    const o = a.createOscillator(), g = a.createGain(), t = t0 + i * step;
+    o.type = type; o.frequency.value = f;
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(vol, t + 0.015); g.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    o.connect(g).connect(a.destination); o.start(t); o.stop(t + len + 0.03);
+  });
+}
+const sfx = {
+  yes: () => notes([523, 659, 784, 1047]),
+  no: () => notes([392, 330], { type: "sine", step: 0.14, len: 0.24, vol: 0.09 }),
+  pop: () => notes([880], { type: "sine", len: 0.08, vol: 0.06 }),
+  fanfare: () => notes([523, 659, 784, 659, 784, 1047], { step: 0.12, len: 0.32 }),
+};
+
+/* ---------------- confetti + flying stickers ---------------- */
+function confetti(x, y, n = 70) {
+  if (reduceMotion) return;
+  const c = $("#confetti"), ctx = c.getContext("2d"), dpr = Math.min(2, devicePixelRatio || 1);
+  c.width = innerWidth * dpr; c.height = innerHeight * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const cols = ["#FFC83D", "#4DB35A", "#EF6A8C", "#5BB9EA", "#A88BE3", "#F5A04B"];
+  const ps = Array.from({ length: n }, () => {
+    const a = Math.random() * Math.PI * 2, v = 4 + Math.random() * 7;
+    return { x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 5, r: Math.random() * 6, s: 5 + Math.random() * 6, col: cols[(Math.random() * cols.length) | 0] };
+  });
+  const t0 = performance.now();
+  (function frame(t) {
+    const k = (t - t0) / 1500; ctx.clearRect(0, 0, innerWidth, innerHeight);
+    if (k >= 1) return;
+    for (const p of ps) {
+      p.vy += 0.32; p.x += p.vx; p.y += p.vy; p.r += 0.15;
+      ctx.save(); ctx.globalAlpha = 1 - k; ctx.translate(p.x, p.y); ctx.rotate(p.r); ctx.fillStyle = p.col; ctx.fillRect(-p.s / 2, -p.s / 4, p.s, p.s / 2); ctx.restore();
+    }
+    requestAnimationFrame(frame);
+  })(t0);
+}
+function artHTML(it) { return it.flag ? `<img src="flags/${it.flag}.svg" alt="">` : it.emoji; }
+function flyToStars(it, x, y) {
+  if (reduceMotion) return;
+  const target = $(".topbar .stars").getBoundingClientRect();
+  const el = document.createElement("div"); el.className = "fly"; el.innerHTML = artHTML(it);
+  el.style.transform = `translate(${x - 24}px, ${y - 24}px)`; document.body.append(el);
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    el.style.transform = `translate(${target.left}px, ${target.top - 6}px) scale(.45)`; el.style.opacity = "0.2";
+  }));
+  setTimeout(() => el.remove(), 900);
+}
+
+/* ---------------- map ---------------- */
+let features = [], W = 0, H = 0, T = d3.zoomIdentity;
+const svg = d3.select("#map");
+const root = svg.append("g");
+const seaPath = root.append("path").attr("class", "sea");
+const gratPath = root.append("path").attr("class", "grat");
+const gLand = root.append("g");
+const gNames = root.append("g").attr("class", "labels").attr("display", "none");
+const gLabels = root.append("g").attr("class", "labels");
+const gHit = root.append("g");
+const gMarks = root.append("g").attr("class", "marks");
+const projection = d3.geoNaturalEarth1();
+const path = d3.geoPath(projection);
+const graticule = d3.geoGraticule10();
+let landSel = null, mainOf = {};
+
+const zoom = d3.zoom().scaleExtent([1, 14]).on("zoom", (e) => { T = e.transform; root.attr("transform", T); placeMarks(); updateNames(); });
+svg.call(zoom).on("dblclick.zoom", null);
+
+function fillFor(f) {
+  const base = getComputedStyle(document.documentElement).getPropertyValue("--c-" + (f.properties.c || "none")).trim();
+  const c = d3.hsl(base); let h = 0;
+  for (const ch of f.properties.n) h = (h * 31 + ch.charCodeAt(0)) % 997;
+  c.l = Math.max(0, Math.min(.97, c.l + ((h % 7) - 3) * 0.022));
+  return c.formatHex();
+}
+
+function buildMap() {
+  for (const f of features) {
+    f._fill = fillFor(f);
+    const polys = f.geometry.type === "Polygon" ? [f.geometry.coordinates] : f.geometry.coordinates;
+    for (const p of polys) {
+      const g = { type: "Polygon", coordinates: p }, area = d3.geoArea(g), a = f.properties.a;
+      if (!mainOf[a] || area > mainOf[a].area) mainOf[a] = { area, g };
+    }
+  }
+  for (const a in mainOf) mainOf[a].center = d3.geoCentroid(mainOf[a].g);
+  landSel = gLand.selectAll("path").data(features).join("path").attr("class", "land").attr("fill", (d) => d._fill);
+  const labels = [];
+  for (const [k, o] of Object.entries(OCEANS)) for (const at of o.at) labels.push({ at, text: o.name, cls: "lbl-ocean" });
+  for (const [, c] of Object.entries(CONT)) labels.push({ at: c.lbl || c.at, text: c.name, cls: "lbl-cont" });
+  gLabels.selectAll("g").data(labels).join("g").attr("class", (d) => "cs " + d.cls).append("text").attr("class", (d) => d.cls).text((d) => d.text);
+  // atlas: one name per country, placed on its biggest piece of land
+  const nameOf = {};
+  for (const f of features) nameOf[f.properties.a] ??= f.properties.n;
+  const names = Object.keys(mainOf).filter((a) => a !== "ATA" && a !== "ATF").map((a) => {
+    const big = !!BY_ADM[a], text = BY_ADM[a] ? BY_ADM[a].name : nameOf[a];
+    return { a, at: mainOf[a].center, text, big, tw: text.length * (big ? 7.2 : 6.3) + 6, pw: 0 };
+  });
+  gNames.selectAll("g").data(names).join("g").attr("class", "cs").append("text").attr("class", (d) => "lbl-name" + (d.big ? " big" : "")).text((d) => d.text);
+  nameNodes = gNames.selectAll("g").nodes();
+}
+
+function homeTransform() {
+  const k = W < 560 ? 1.45 : 1;
+  return d3.zoomIdentity.translate(W / 2, H / 2).scale(k).translate(-W / 2, -H / 2);
+}
+function layout() {
+  const r = $("#stage").getBoundingClientRect();
+  if (!r.width || !r.height) return;
+  if (Math.abs(r.width - W) < 1 && Math.abs(r.height - H) < 1) return;
+  W = r.width; H = r.height;
+  svg.attr("viewBox", `0 0 ${W} ${H}`);
+  projection.fitExtent([[12, 12], [W - 12, H - 12]], { type: "Sphere" });
+  seaPath.attr("d", path({ type: "Sphere" }));
+  gratPath.attr("d", path(graticule));
+  landSel.attr("d", path);
+  gHit.selectAll("path").attr("d", path);
+  gNames.selectAll("g").each((d) => { const [[x0, y0], [x1, y1]] = path.bounds(mainOf[d.a].g); d.pw = Math.max(x1 - x0, (y1 - y0) * .8); });
+  nameNodes.sort((m, n) => (n.__data__.big - m.__data__.big) || (n.__data__.pw - m.__data__.pw));
+  zoom.extent([[0, 0], [W, H]]).translateExtent([[0, 0], [W, H]]);
+  svg.call(zoom.transform, homeTransform());
+}
+new ResizeObserver(() => layout()).observe($("#stage"));
+
+function placeMarks() {
+  root.selectAll(".cs").attr("transform", (d) => { const p = projection(d.at); return `translate(${p[0]},${p[1]}) scale(${1 / T.k})`; });
+}
+function updateNames() {
+  if (game.mode !== "atlas" || !W) return;
+  const placed = [];
+  const boxOf = (d, w, h) => { const [x, y] = T.apply(projection(d.at)); return [x - w / 2, y - h / 2, x + w / 2, y + h / 2]; };
+  const free = (b) => !placed.some((q) => b[0] < q[2] && b[2] > q[0] && b[1] < q[3] && b[3] > q[1]);
+  // oceans and continents first (continents step aside once you zoom in), then countries, biggest first
+  gLabels.selectAll("g").each(function (d) {
+    const cont = d.cls === "lbl-cont";
+    if (cont && T.k > 2.4) { this.setAttribute("display", "none"); return; }
+    this.removeAttribute("display");
+    placed.push(boxOf(d, d.text.length * (cont ? 8.6 : 8) + 8, 18));
+  });
+  for (const n of nameNodes) {
+    const d = n.__data__;
+    let show = d.pw * T.k >= d.tw;
+    if (show) { const b = boxOf(d, d.tw, 14); show = free(b); if (show) placed.push(b); }
+    if (show) n.removeAttribute("display"); else n.setAttribute("display", "none");
+  }
+}
+let nameNodes = [];
+let marks = [];
+function renderMarks() {
+  const sel = gMarks.selectAll("g.cs").data(marks, (d) => d.id).join((enter) => {
+    const g = enter.append("g").attr("class", (d) => "cs " + (d.type === "ring" ? "ring" : ""));
+    g.each(function (d) {
+      const n = d3.select(this);
+      if (d.type === "ring") { n.append("circle").attr("r", 34); n.append("circle").attr("r", 34); }
+      else if (d.type === "flag") n.append("image").attr("href", `flags/${d.flag}.svg`).attr("x", -16).attr("y", -12).attr("width", 32).attr("height", 24);
+      else if (d.type === "star") { n.append("text").attr("class", "mk-star").text("⭐"); n.append("text").attr("class", "mk-name").attr("y", 20).text(d.text); }
+      else n.append("text").attr("class", "mk-emoji").text(d.text);
+    });
+    return g;
+  });
+  sel.raise(); placeMarks();
+}
+function addMark(m) { marks.push({ id: Math.random().toString(36).slice(2), ...m }); renderMarks(); }
+function clearMarks(all) { marks = all ? [] : marks.filter((m) => m.keep); renderMarks(); }
+
+function landOf(it) {
+  if (it.kind === "country") return landSel.filter((d) => d.properties.a === it.key);
+  if (it.kind === "cont") return landSel.filter((d) => d.properties.c === it.key);
+  return landSel.filter(() => false);
+}
+function centerOf(it) { return it.kind === "country" ? mainOf[it.key].center : it.at; }
+function clearHints() {
+  landSel.classed("glow", false).classed("win", false).classed("hintc", false).classed("sel", false).classed("oops", false);
+  clearMarks(false);
+}
+function glow(it) {
+  landOf(it).classed("glow", true).raise();
+  if (it.kind !== "country") addMark({ type: "ring", at: centerOf(it) });
+}
+function ring(it) { addMark({ type: "ring", at: centerOf(it) }); }
+function hintFlash(it) {
+  if (it.kind !== "country") return;
+  const sel = landSel.filter((d) => d.properties.c === it.c.cont || d.properties.c === it.c.also);
+  sel.classed("hintc", false); void document.body.offsetWidth; sel.classed("hintc", true);
+}
+function oops(hit) {
+  if (!hit || hit.kind !== "country") return;
+  const sel = landSel.filter((d) => d === hit.f);
+  sel.classed("oops", false); void document.body.offsetWidth; sel.classed("oops", true);
+}
+function zoomToPoint(at, k) {
+  const p = projection(at);
+  svg.transition().duration(reduceMotion ? 0 : 900).call(zoom.transform, d3.zoomIdentity.translate(W / 2, H / 2).scale(k).translate(-p[0], -p[1]));
+}
+function zoomTo(it) {
+  if (it.kind !== "country") return zoomToPoint(it.at, it.kind === "ocean" ? 1.8 : 2.2);
+  const [[x0, y0], [x1, y1]] = path.bounds(mainOf[it.key].g);
+  const k = Math.max(1.6, Math.min(6, 0.45 / Math.max((x1 - x0) / W, (y1 - y0) / H)));
+  zoomToPoint(mainOf[it.key].center, k);
+}
+function resetZoom(instant) { svg.transition().duration(instant || reduceMotion ? 0 : 700).call(zoom.transform, homeTransform()); }
+function screenOf(at) {
+  const r = svg.node().getBoundingClientRect(), p = T.apply(projection(at));
+  return [r.left + p[0], r.top + p[1]];
+}
+function syncHit(items) {
+  const keys = new Set(items.filter((i) => i.kind === "country").map((i) => i.key));
+  gHit.selectAll("path").data(features.filter((f) => keys.has(f.properties.a))).join("path").attr("class", "hit").attr("d", path);
+}
+
+/* oceans are not in the map data: work out which one a point is in from simple boundaries */
+function oceanAt([lon, lat]) {
+  if (lat < -60) return "southern";
+  if (lat > 66) return "arctic";
+  if (lon > 46 && lon < 55.5 && lat > 36 && lat < 47.5) return "caspian";
+  const west = lat > 50 ? -100 : lat > 20 ? -98 : lat > 14 ? -89 : lat > 9 ? -84 : -69.5;
+  const east = lat > 30 ? 42 : 20; // the Mediterranean and Black Sea count as Atlantic
+  if (lon >= west && lon < east) return "atlantic";
+  if (lat <= 30 && lon >= 20) {
+    const edge = lat > 5 ? 100 : lat > 0 ? 104 : lat > -10 ? (lat < -8 ? 125 : 105) : lat > -25 ? 130 : 147;
+    if (lon < edge) return "indian";
+  }
+  return "pacific";
+}
+function waterHit(ll) {
+  if (!ll || !isFinite(ll[0]) || !isFinite(ll[1])) return null;
+  const k = oceanAt(ll);
+  return k === "caspian" ? { kind: "lake", at: ll } : { kind: "ocean", key: k, at: ll };
+}
+function hitAt(cx, cy) {
+  const el = document.elementFromPoint(cx, cy);
+  if (!el) return null;
+  if (el.id === "exploreGlobe") return globeHit(exploreGlobe, cx, cy);
+  if (!svg.node().contains(el)) return null;
+  const d = el.__data__;
+  if (d && d.type === "Feature") return { kind: "country", f: d };
+  if (el.classList.contains("sea") || el.classList.contains("grat")) {
+    const r = svg.node().getBoundingClientRect();
+    return waterHit(projection.invert(T.invert([cx - r.left, cy - r.top])));
+  }
+  return null;
+}
+// taps (not pans or pinches) on the map
+{
+  let start = null, active = 0;
+  const node = svg.node();
+  node.addEventListener("pointerdown", (e) => { active++; start = active === 1 ? { x: e.clientX, y: e.clientY, t: performance.now() } : null; });
+  const end = (e) => {
+    active = Math.max(0, active - 1);
+    if (e.type === "pointerup" && start && Math.hypot(e.clientX - start.x, e.clientY - start.y) < 10 && performance.now() - start.t < 800) onTap(hitAt(e.clientX, e.clientY), e.clientX, e.clientY);
+    start = null;
+  };
+  node.addEventListener("pointerup", end); node.addEventListener("pointercancel", end);
+}
+$("#zoomIn").onclick = () => svg.transition().duration(300).call(zoom.scaleBy, 1.6);
+$("#zoomOut").onclick = () => svg.transition().duration(300).call(zoom.scaleBy, 1 / 1.6);
+$("#zoomHome").onclick = () => { resetZoom(); if (game.mode === "explore" && !$("#exploreGlobe").hidden) toggleGlobe(false); };
+
+/* ---------------- globes (canvas) ---------------- */
+const globes = [];
+function makeGlobe(canvas, rot) { const g = { canvas, rot: rot || [-20, -18, 0], spin: true, idleUntil: 0, anim: null, highlight: null, pin: null }; globes.push(g); return g; }
+function drawGlobe(gl) {
+  const c = gl.canvas, w = c.clientWidth, h = c.clientHeight;
+  if (!w || !h || !features.length) return;
+  const dpr = Math.min(2, devicePixelRatio || 1);
+  if (c.width !== Math.round(w * dpr) || c.height !== Math.round(h * dpr)) { c.width = Math.round(w * dpr); c.height = Math.round(h * dpr); }
+  const ctx = c.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, h);
+  const r = Math.min(w, h) / 2 - 6, cx = w / 2, cy = h / 2;
+  const proj = d3.geoOrthographic().translate([cx, cy]).scale(r).rotate(gl.rot).clipAngle(90);
+  gl.proj = proj; gl.r = r;
+  const p = d3.geoPath(proj, ctx);
+  const sea = ctx.createRadialGradient(cx - r * .35, cy - r * .4, r * .1, cx, cy, r);
+  sea.addColorStop(0, "#9AD8F6"); sea.addColorStop(1, "#2E8DC8");
+  ctx.beginPath(); p({ type: "Sphere" }); ctx.fillStyle = sea; ctx.fill();
+  ctx.beginPath(); p(graticule); ctx.strokeStyle = "rgba(255,255,255,.18)"; ctx.lineWidth = .6; ctx.stroke();
+  ctx.strokeStyle = "rgba(255,255,255,.75)"; ctx.lineWidth = .6;
+  for (const f of features) {
+    ctx.beginPath(); p(f);
+    ctx.fillStyle = gl.highlight && gl.highlight(f) ? "#FFE066" : f._fill; ctx.fill(); ctx.stroke();
+  }
+  if (gl.pin && d3.geoDistance(gl.pin, [-gl.rot[0], -gl.rot[1]]) < Math.PI / 2 - .05) {
+    const [px, py] = proj(gl.pin);
+    ctx.beginPath(); ctx.arc(px, py, Math.max(8, r * .09), 0, Math.PI * 2); ctx.lineWidth = 4; ctx.strokeStyle = "#FFC83D"; ctx.stroke();
+  }
+  const shade = ctx.createRadialGradient(cx - r * .4, cy - r * .45, r * .05, cx, cy, r * 1.02);
+  shade.addColorStop(0, "rgba(255,255,255,.3)"); shade.addColorStop(.55, "rgba(255,255,255,0)"); shade.addColorStop(1, "rgba(10,40,80,.3)");
+  ctx.beginPath(); p({ type: "Sphere" }); ctx.fillStyle = shade; ctx.fill();
+  ctx.lineWidth = 3; ctx.strokeStyle = "rgba(255,255,255,.9)"; ctx.stroke();
+}
+function spinTo(gl, at) {
+  const to = [-at[0], Math.max(-50, Math.min(50, -at[1])), 0];
+  const from = gl.rot.slice(); from[0] = to[0] + ((((from[0] - to[0]) % 360) + 540) % 360) - 180;
+  const interp = d3.interpolate(from, to);
+  gl.anim = { t0: performance.now(), dur: reduceMotion ? 1 : 1600, interp };
+}
+(function loop(t) {
+  for (const gl of globes) {
+    if (!gl.canvas.clientWidth) continue;
+    if (gl.anim) {
+      const k = Math.min(1, (t - gl.anim.t0) / gl.anim.dur);
+      gl.rot = gl.anim.interp(d3.easeCubicInOut(k));
+      if (k >= 1) { gl.anim = null; gl.idleUntil = t + 2500; }
+    } else if (gl.spin && !reduceMotion && !gl.dragging && t > gl.idleUntil) gl.rot = [gl.rot[0] + 0.14, gl.rot[1], 0];
+    drawGlobe(gl);
+  }
+  requestAnimationFrame(loop);
+})(0);
+function globeHit(gl, cx, cy) {
+  const rect = gl.canvas.getBoundingClientRect(), x = cx - rect.left, y = cy - rect.top;
+  if (!gl.proj || Math.hypot(x - rect.width / 2, y - rect.height / 2) > gl.r) return null;
+  const ll = gl.proj.invert([x, y]);
+  const f = features.find((f) => d3.geoContains(f, ll));
+  return f ? { kind: "country", f } : waterHit(ll);
+}
+
+const homeGlobe = makeGlobe($("#homeGlobe"), [-60, -20, 0]);
+const celGlobe = makeGlobe($("#celGlobe"));
+const exploreGlobe = makeGlobe($("#exploreGlobe"), [-78, -20, 0]);
+{
+  const c = $("#exploreGlobe"); let st = null;
+  c.addEventListener("pointerdown", (e) => { c.setPointerCapture(e.pointerId); st = { x: e.clientX, y: e.clientY, rot: exploreGlobe.rot.slice(), moved: false }; exploreGlobe.dragging = true; exploreGlobe.anim = null; });
+  c.addEventListener("pointermove", (e) => {
+    if (!st) return; const dx = e.clientX - st.x, dy = e.clientY - st.y;
+    if (Math.hypot(dx, dy) > 8) st.moved = true;
+    const s = 70 / exploreGlobe.r;
+    exploreGlobe.rot = [st.rot[0] + dx * s, Math.max(-70, Math.min(70, st.rot[1] - dy * s)), 0];
+  });
+  const end = (e) => {
+    if (!st) return; exploreGlobe.dragging = false; exploreGlobe.idleUntil = performance.now() + 3000;
+    if (e.type === "pointerup" && !st.moved) onTap(globeHit(exploreGlobe, e.clientX, e.clientY), e.clientX, e.clientY);
+    st = null;
+  };
+  c.addEventListener("pointerup", end); c.addEventListener("pointercancel", end);
+}
+function toggleGlobe(on) {
+  $("#exploreGlobe").hidden = !on;
+  $("#globeToggle").textContent = on ? "🗺️ Flat map" : "🌍 Globe";
+  $(".stage-tools").hidden = on;
+  if (on) { exploreGlobe.idleUntil = 0; tell("Drag the globe to spin it. Tap any place to learn about it!"); }
+}
+$("#globeToggle").onclick = () => toggleGlobe($("#exploreGlobe").hidden);
+$("#atlasBtn").onclick = () => { sfx.pop(); startAtlas(); };
+
+/* ---------------- screens ---------------- */
+const game = { mode: null, level: null, token: 0, busy: false };
+function show(id) {
+  for (const s of ["home", "menu", "levels", "play", "book"]) $("#" + s).hidden = s !== id;
+  $("#celebrate").hidden = true;
+  if (id === "play") requestAnimationFrame(layout);
+}
+function toMenu() { game.token++; game.mode = null; if (synth) synth.cancel(); show("menu"); }
+
+$("#startBtn").onclick = () => {
+  audio(); sfx.pop(); show("menu");
+  say("Hi! I'm Tully the turtle. Let's explore the world together! What shall we play?");
+};
+$$("[data-go]").forEach((b) => b.addEventListener("click", () => {
+  sfx.pop(); const go = b.dataset.go;
+  if (go === "explore") startExplore();
+  else if (go === "atlas") startAtlas();
+  else if (go === "flags") startFlags();
+  else if (go === "book") openBook();
+  else openLevels(go);
+}));
+$$("[data-back]").forEach((b) => b.addEventListener("click", () => { sfx.pop(); toMenu(); }));
+$("#homeBtn").onclick = () => { sfx.pop(); toMenu(); };
+
+function openLevels(kind) {
+  game.pick = kind;
+  $("#levelsTitle").textContent = kind === "find" ? "Find It! Pick a level" : "Match It! Pick a level";
+  const box = $("#levelTiles"); box.innerHTML = "";
+  const tints = ["#C7EBFC", "#FFE89E", "#FFD3E0", "#D2F0C8"];
+  LEVELS.forEach((L, i) => {
+    const open = isOpen(L), have = countOf(L.id), total = itemsFor(L.id).length;
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "tile" + (open ? "" : " locked"); b.style.setProperty("--tile", tints[i]);
+    const prev = L.need && LEVEL[L.need[0]];
+    b.innerHTML = `${open ? "" : '<span class="lock" aria-hidden="true">🔒</span>'}<span class="em">${L.emoji}</span><b>${L.name}</b>
+      <small>${open ? `${have} of ${total} stickers` : `Find ${L.need[1]} ${prev.name.toLowerCase()} to open`}</small>
+      <span class="meter" aria-hidden="true"><i style="width:${open ? (have / total) * 100 : (countOf(prev.id) / L.need[1]) * 100}%"></i></span>`;
+    b.onclick = () => {
+      if (!open) { sfx.no(); say(`This one is locked. Find ${L.need[1]} ${prev.name.toLowerCase()} first. You have ${countOf(prev.id)}.`); return; }
+      sfx.pop(); kind === "find" ? startFind(L.id) : startMatch(L.id);
+    };
+    box.append(b);
+  });
+  show("levels");
+  say(kind === "find" ? "Find It! Pick a level." : "Match It! Pick a level.");
+}
+
+function setMode(mode, level) {
+  game.token++; game.mode = mode; game.level = level; game.busy = false; game.sel = null;
+  show("play");
+  $("#play").dataset.mode = mode;
+  $("#modeTitle").textContent = { explore: "Explore", atlas: "Atlas", flags: "Flag Fun" }[mode] || `${mode === "find" ? "Find It!" : "Match It"} · ${LEVEL[level].name}`;
+  gLabels.attr("display", mode === "explore" || mode === "atlas" ? null : "none");
+  gLabels.selectAll("g").attr("display", null);
+  gNames.attr("display", mode === "atlas" ? null : "none");
+  $("#globeToggle").hidden = mode !== "explore";
+  $("#atlasBtn").hidden = mode !== "explore";
+  $("#legendWrap").hidden = mode !== "atlas";
+  $("#flagQuiz").hidden = mode !== "flags";
+  $("#flagQuiz").innerHTML = "";
+  toggleGlobe(false);
+  $("#tray").hidden = mode !== "match";
+  $("#sheetWrap").innerHTML = "";
+  $("#dots").innerHTML = "";
+  syncHit([]);
+  requestAnimationFrame(() => { clearHints(); clearMarks(true); resetZoom(true); });
+  return game.token;
+}
+
+/* ---------------- describing what was tapped ---------------- */
+function sayPlace(f) {
+  const p = f.properties, c = BY_ADM[p.a];
+  if (c) return sayC(c);
+  return /^(United|Central African|Democratic|Dem\.|Netherlands|Philippines|Bahamas|Solomon|Falkland|Dominican|Gambia|French Southern)/.test(p.n) ? "the " + p.n : p.n;
+}
+function matches(it, hit) {
+  if (!hit) return false;
+  if (it.kind === "ocean") return hit.kind === "ocean" && hit.key === it.key;
+  if (it.kind === "cont") return hit.kind === "country" && hit.f.properties.c === it.key;
+  return hit.kind === "country" && hit.f.properties.a === it.key;
+}
+function describe(hit, it) {
+  if (hit.kind === "country") {
+    const p = hit.f.properties, nm = sayPlace(hit.f);
+    if (it.kind === "ocean") return `That's land. It's ${nm}`;
+    if (it.kind === "cont") return p.c ? `That's ${nm}, in ${contSay(p.c)}` : `That's ${nm}`;
+    return `That's ${nm}`;
+  }
+  if (hit.kind === "ocean") return it.kind === "ocean" ? `That's the ${OCEANS[hit.key].name}` : `That's the ${OCEANS[hit.key].name}. We need land`;
+  return "That's the Caspian Sea, a giant salty lake";
+}
+function hint(it) {
+  if (it.kind === "ocean") return OCEANS[it.key].hint;
+  if (it.kind === "cont") return `Look for the ${CONT[it.key].color} one!`;
+  const c = it.c, where = c.also ? `${contSay(c.cont)} and ${contSay(c.also)}` : contSay(c.cont);
+  return it.level === "capitals" ? `It's in ${where}.` : `${cap1(sayC(c))} is in ${where}.`;
+}
+function successText(it, fresh) {
+  const head = it.level === "capitals" ? `Yes! ${sayCap(it.c)} is the capital of ${sayC(it.c)}!` : `Yes! That's ${it.say}!`;
+  return fresh ? `${head} You won a sticker! ${it.fact}` : head;
+}
+function answerName(it) { return it.level === "capitals" ? sayC(it.c) : it.say; }
+
+/* wrong answers get gentler and gentler help: a hint, then "look here", then the answer glows */
+function miss(state, it, hit) {
+  sfx.no(); oops(hit);
+  const what = describe(hit, it);
+  state.tries++;
+  if (state.revealed || state.tries >= 3) {
+    if (!state.revealed) { state.revealed = true; clearHints(); glow(it); zoomTo(it); }
+    tell(`${what}. Here it is, glowing! Tap ${answerName(it)}.`);
+  } else if (state.tries === 1) {
+    tell(`${what}. Try again! ${hint(it)}`); hintFlash(it);
+  } else {
+    tell(it.level === "capitals" ? `${what}. ${sayCap(it.c)} is the capital of ${sayC(it.c)}. Look here!` : `${what}. Look here!`);
+    zoomTo(it); ring(it);
+  }
+}
+function celebrateAt(it) {
+  landOf(it).classed("glow", false).classed("win", true).raise();
+  if (it.kind === "ocean") addMark({ type: "emoji", at: it.at, text: it.emoji });
+  if (it.level === "capitals") addMark({ type: "star", at: it.c.capAt, text: it.c.cap });
+  const [x, y] = screenOf(centerOf(it));
+  confetti(x, y);
+  return [x, y];
+}
+
+/* ---------------- explore ---------------- */
+function startExplore() {
+  setMode("explore");
+  tell("Tap anywhere on the map to learn about it!");
+  $("#sheetWrap").innerHTML = sheetHTML({ art: "🌍", title: "Our world", chips: [], text: "It has 5 oceans and 7 continents. The blue is water and the colours are land. Each continent has its own colour!" });
+}
+function sheetHTML({ art, flag, title, chips, text, extra }) {
+  return `<div class="sheet"><div class="art">${art}${flag ? `<img src="flags/${flag}.svg" alt="Flag of ${title}">` : ""}</div>
+    <div class="body"><h3>${title}</h3>${chips.length ? `<div class="chips">${chips.map((k) => `<span class="chip" style="--chip:var(--c-${k})">${CONT[k].name}</span>`).join("")}</div>` : ""}
+    <p>${text}</p>${extra ? `<p class="cap">${extra}</p>` : ""}</div></div>`;
+}
+function explore(hit) {
+  clearHints(); exploreGlobe.highlight = null; exploreGlobe.pin = null;
+  if (!hit) return;
+  sfx.pop();
+  let card, line;
+  if (hit.kind === "country") {
+    const p = hit.f.properties, c = BY_ADM[p.a];
+    landSel.filter((d) => d.properties.a === p.a).classed("sel", true).raise();
+    exploreGlobe.highlight = (f) => f.properties.a === p.a;
+    if (c) {
+      addMark({ type: "star", at: c.capAt, text: c.cap });
+      card = { art: c.emoji, flag: c.iso, title: c.name, chips: c.also ? [c.cont, c.also] : [c.cont], text: c.fact, extra: `⭐ Capital city: ${c.cap}` };
+      line = `${cap1(sayC(c))}! ${c.fact} The capital city is ${sayCap(c)}.`;
+    } else if (p.c === "antarctica") {
+      card = { art: "🐧", title: "Antarctica", chips: ["antarctica"], text: CONT.antarctica.fact };
+      line = `This is Antarctica! ${CONT.antarctica.fact}`;
+    } else if (!p.c) {
+      card = { art: "🏝️", title: p.n, chips: [], text: "Little islands far out in the Indian Ocean." };
+      line = `These are the ${p.n}, little islands far out in the Indian Ocean.`;
+    } else {
+      card = { art: CONT[p.c].emoji, title: p.n, chips: [p.c], text: `${p.n} is a country in ${CONT[p.c].say || CONT[p.c].name}.` };
+      line = `This is ${sayPlace(hit.f)}, in ${contSay(p.c)}.`;
+    }
+  } else if (hit.kind === "ocean") {
+    const o = OCEANS[hit.key];
+    addMark({ type: "ring", at: hit.at });
+    exploreGlobe.pin = hit.at;
+    card = { art: o.emoji, title: o.name, chips: [], text: o.fact };
+    line = `The ${o.name}! ${o.fact}`;
+  } else {
+    addMark({ type: "ring", at: hit.at });
+    card = { art: "🌊", title: "Caspian Sea", chips: [], text: "It is called a sea, but it is really the biggest lake in the world!" };
+    line = "The Caspian Sea! It is called a sea, but it is really the biggest lake in the world.";
+  }
+  $("#sheetWrap").innerHTML = sheetHTML(card);
+  tell(line);
+}
+
+/* ---------------- find it ---------------- */
+function pick(items, n) {
+  const fresh = shuffle(items.filter((i) => !save.stickers[i.id]));
+  const old = shuffle(items.filter((i) => save.stickers[i.id]));
+  return fresh.concat(old).slice(0, n);
+}
+function dots(total, done) {
+  $("#dots").innerHTML = Array.from({ length: total }, (_, i) => `<span class="dot${i < done ? " on" : ""}"></span>`).join("");
+}
+function startFind(level) {
+  setMode("find", level);
+  Object.assign(game, { queue: pick(itemsFor(level), 5), qi: 0, earned: [], openBefore: openIds(), last: null });
+  setTimeout(() => ask(game.token), 350);
+}
+function ask(tok) {
+  if (tok !== game.token) return;
+  clearHints(); resetZoom();
+  if (game.qi >= game.queue.length) return endRound();
+  const it = game.cur = game.queue[game.qi];
+  game.state = { tries: 0, revealed: false }; game.busy = false;
+  dots(game.queue.length, game.qi);
+  syncHit([it]);
+  const q = it.level === "oceans" ? `Can you find ${it.say}? Tap the water!`
+    : it.level === "continents" ? `Where is ${it.say}? Tap it!`
+    : it.level === "countries" ? `Can you find ${it.say}? Tap it!`
+    : `${sayCap(it.c)} is a capital city. Which country is it in?`;
+  tell(cap1(q));
+}
+async function findTap(hit) {
+  const it = game.cur, tok = game.token;
+  if (!it || game.busy || !hit) return;
+  if (!matches(it, hit)) return miss(game.state, it, hit);
+  game.busy = true; game.last = it;
+  const fresh = !game.state.revealed && award(it);
+  if (fresh) game.earned.push(it);
+  sfx.yes(); clearMarks(false); landSel.classed("glow", false);
+  const [x, y] = celebrateAt(it);
+  if (fresh) flyToStars(it, x, y);
+  dots(game.queue.length, game.qi + 1);
+  await tell(game.state.revealed ? `Well done! That's ${answerName(it)}. Now you know it!` : successText(it, fresh));
+  await sleep(350);
+  if (tok !== game.token) return;
+  game.qi++; ask(tok);
+}
+
+/* ---------------- match it ---------------- */
+function startMatch(level) {
+  const tok = setMode("match", level);
+  const pool = pick(itemsFor(level), 6);
+  Object.assign(game, { pool, total: pool.length, done: 0, earned: [], openBefore: openIds(), last: null });
+  setTimeout(() => deal(tok), 350);
+}
+function deal(tok) {
+  if (tok !== game.token) return;
+  clearHints(); resetZoom();
+  const next = game.pool.splice(0, 3);
+  if (!next.length) return endRound();
+  game.tray = next.map((it) => ({ it, tries: 0, revealed: false }));
+  game.sel = null; game.busy = false;
+  renderTray(); dots(game.total, game.done);
+  tell(game.level === "capitals" ? "Each card is a capital city. Drag it to its country!" : "Drag each card to its home on the map! Or tap a card, then tap the map.");
+}
+function renderTray() {
+  const box = $("#tray"); box.innerHTML = "";
+  syncHit(game.tray.map((c) => c.it));
+  if (!game.tray.length) { box.innerHTML = '<p class="empty-tray">All done! 🎉</p>'; return; }
+  for (const card of game.tray) {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "mcard" + (game.sel === card ? " sel" : "");
+    b.innerHTML = `<span class="art">${artHTML(card.it)}</span><span>${card.it.name}</span>`;
+    b.setAttribute("aria-label", card.it.name);
+    bindCard(b, card); box.append(b);
+  }
+}
+function bindCard(el, card) {
+  el.addEventListener("pointerdown", (e) => {
+    if (game.busy) return;
+    e.preventDefault(); el.setPointerCapture(e.pointerId);
+    const st = { x: e.clientX, y: e.clientY }; let ghost = null;
+    const move = (ev) => {
+      if (!ghost && Math.hypot(ev.clientX - st.x, ev.clientY - st.y) > 8) {
+        ghost = el.cloneNode(true); ghost.classList.add("ghost"); ghost.classList.remove("sel"); document.body.append(ghost);
+        el.classList.add("lifted"); game.sel = card; sfx.pop();
+      }
+      if (ghost) ghost.style.transform = `translate(${ev.clientX - 58}px, ${ev.clientY - 70}px) rotate(-5deg)`;
+    };
+    const up = (ev) => {
+      el.removeEventListener("pointermove", move); el.removeEventListener("pointerup", up); el.removeEventListener("pointercancel", up);
+      el.classList.remove("lifted");
+      if (!ghost) { if (ev.type === "pointerup") selectCard(card); return; }
+      ghost.remove();
+      if (ev.type !== "pointerup") return;
+      const hit = hitAt(ev.clientX, ev.clientY);
+      if (hit) place(card, hit); else renderTray();
+    };
+    el.addEventListener("pointermove", move); el.addEventListener("pointerup", up); el.addEventListener("pointercancel", up);
+  });
+  el.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); selectCard(card); } });
+}
+function selectCard(card) {
+  if (game.busy) return;
+  game.sel = card; sfx.pop(); renderTray();
+  const it = card.it;
+  tell(it.level === "capitals" ? `${sayCap(it.c)}! Which country is it the capital of? Tap it on the map.` : `${cap1(it.say)}! Now tap its home on the map.`);
+}
+async function place(card, hit) {
+  if (game.busy) return;
+  const it = card.it, tok = game.token;
+  if (game.sel !== card) { game.sel = card; renderTray(); }
+  if (!matches(it, hit)) { miss(card, it, hit); return; }
+  game.busy = true; game.last = it;
+  const fresh = !card.revealed && award(it);
+  if (fresh) game.earned.push(it);
+  sfx.yes(); clearHints();
+  const [x, y] = celebrateAt(it);
+  if (fresh) flyToStars(it, x, y);
+  addMark(it.flag ? { type: "flag", flag: it.flag, at: centerOf(it), keep: true }
+    : it.level === "capitals" ? { type: "star", at: it.c.capAt, text: it.c.cap, keep: true }
+    : { type: "emoji", at: centerOf(it), text: it.emoji, keep: true });
+  game.tray = game.tray.filter((c) => c !== card); game.sel = null; game.done++;
+  renderTray(); dots(game.total, game.done);
+  await tell(card.revealed ? `Well done! That's ${answerName(it)}.` : successText(it, fresh));
+  await sleep(300);
+  if (tok !== game.token) return;
+  game.busy = false; clearHints();
+  if (!game.tray.length) deal(tok);
+  else tell("Great! Now another card.");
+}
+
+/* ---------------- atlas: a reference map with every name ---------------- */
+function startAtlas() {
+  setMode("atlas");
+  $("#legendWrap").innerHTML = `<div class="legend">
+    <h4>Continents</h4><div class="leg-grid">${Object.entries(CONT).map(([k, c]) => `<button type="button" class="leg" data-cont="${k}"><i style="--sw:var(--c-${k})"></i><span class="e" aria-hidden="true">${c.emoji}</span>${c.name}</button>`).join("")}</div>
+    <h4>Oceans</h4><div class="leg-grid">${Object.entries(OCEANS).map(([k, o]) => `<button type="button" class="leg" data-ocean="${k}"><i style="--sw:var(--sea)"></i><span class="e" aria-hidden="true">${o.emoji}</span>${o.name}</button>`).join("")}</div>
+  </div>`;
+  $$("#legendWrap [data-cont]").forEach((b) => (b.onclick = () => {
+    const k = b.dataset.cont, c = CONT[k]; sfx.pop(); clearHints();
+    const sel = landSel.filter((d) => d.properties.c === k); sel.classed("hintc", true).raise();
+    zoomToPoint(c.at, k === "antarctica" ? 1.6 : k === "asia" ? 1.8 : 2.4);
+    tell(`${c.say || c.name}! ${c.fact}`);
+  }));
+  $$("#legendWrap [data-ocean]").forEach((b) => (b.onclick = () => {
+    const o = OCEANS[b.dataset.ocean]; sfx.pop(); clearHints();
+    addMark({ type: "ring", at: o.at[0] }); zoomToPoint(o.at[0], 1.8);
+    tell(`The ${o.name}! ${o.fact}`);
+  }));
+  tell("This is the Atlas. Pinch or press plus to zoom in, and drag to move around. More names appear as you zoom. Tap any place to hear about it!");
+}
+
+/* ---------------- flag fun ---------------- */
+function startFlags() {
+  setMode("flags");
+  Object.assign(game, { queue: pick(itemsFor("flags"), 5), qi: 0, earned: [], openBefore: openIds(), last: null });
+  setTimeout(() => askFlag(game.token), 350);
+}
+function askFlag(tok) {
+  if (tok !== game.token) return;
+  clearHints(); resetZoom();
+  if (game.qi >= game.queue.length) return endRound();
+  const it = game.cur = game.queue[game.qi];
+  game.state = { tries: 0 }; game.busy = false;
+  dots(game.queue.length, game.qi);
+  // turns alternate: "which flag is X's?" (4 flags) and "whose flag is this?" (3 countries)
+  const pickFlag = game.qi % 2 === 0;
+  const opts = shuffle([it.c, ...shuffle(COUNTRIES.filter((c) => c !== it.c)).slice(0, pickFlag ? 3 : 2)]);
+  game.fq = { pickFlag, opts };
+  const box = $("#flagQuiz");
+  box.innerHTML = pickFlag
+    ? `<div class="fq-ask"><span class="e" aria-hidden="true">${it.emoji}</span><b>${it.name}</b></div>
+       <div class="fq-grid">${opts.map((c, i) => `<button type="button" class="fq-opt" data-i="${i}" aria-label="Flag ${i + 1}"><img src="flags/${c.iso}.svg" alt=""></button>`).join("")}</div>`
+    : `<div class="fq-ask"><img src="flags/${it.flag}.svg" alt="Whose flag is this?"></div>
+       <div class="fq-grid three">${opts.map((c, i) => `<button type="button" class="fq-opt" data-i="${i}"><span class="e" aria-hidden="true">${c.emoji}</span><span>${c.name}</span></button>`).join("")}</div>`;
+  $$(".fq-opt", box).forEach((b) => (b.onclick = () => flagAnswer(b, opts[Number(b.dataset.i)])));
+  tell(pickFlag ? `Which one is the flag of ${it.say}?` : "Whose flag is this? Tap the right country!");
+}
+async function flagAnswer(btn, c) {
+  const it = game.cur, tok = game.token, { pickFlag, opts } = game.fq;
+  if (game.busy || !it) return;
+  if (c !== it.c) {
+    sfx.no(); btn.classList.add("no"); game.state.tries++;
+    const what = pickFlag ? `That's the flag of ${sayC(c)}.` : `No, that's not ${sayC(c)}'s flag.`;
+    if (game.state.tries >= 2) {
+      $$("#flagQuiz .fq-opt")[opts.indexOf(it.c)].classList.add("glow");
+      tell(`${what} Look, it's the glowing one!`);
+    } else if (pickFlag) {
+      tell(`${what} Try again! Here's a clue: ${it.c.flagFact}`);
+    } else {
+      tell(`${what} Try again! This country is in ${contSay(it.c.cont)}.`); hintFlash(it);
+    }
+    return;
+  }
+  game.busy = true; game.last = it;
+  btn.classList.add("yes"); btn.classList.remove("glow");
+  $$("#flagQuiz .fq-opt").forEach((b) => { if (b !== btn) b.classList.add("no"); });
+  const fresh = game.state.tries < 2 && award(it);
+  if (fresh) game.earned.push(it);
+  sfx.yes(); clearHints(); zoomTo(it);
+  landOf(it).classed("win", true).raise();
+  addMark({ type: "flag", flag: it.flag, at: centerOf(it), keep: true });
+  const r = btn.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+  confetti(x, y); if (fresh) flyToStars(it, x, y);
+  dots(game.queue.length, game.qi + 1);
+  await tell(`Yes! That's the flag of ${it.say}! ${fresh ? "You won a sticker! " : ""}${it.c.flagFact}`);
+  await sleep(500);
+  if (tok !== game.token) return;
+  game.qi++; askFlag(tok);
+}
+
+/* ---------------- taps on the map, by mode ---------------- */
+function onTap(hit) {
+  audio();
+  if (game.mode === "explore" || game.mode === "atlas") explore(hit);
+  else if (game.mode === "find") findTap(hit);
+  else if (game.mode === "match") {
+    if (game.busy || !hit) return;
+    if (!game.sel) { sfx.no(); tell("First pick a card, then tap the map!"); return; }
+    place(game.sel, hit);
+  }
+}
+
+/* ---------------- end of a round ---------------- */
+function endRound() {
+  const tok = game.token;
+  const newly = openIds().filter((id) => !game.openBefore.includes(id)).map((id) => LEVEL[id].name);
+  const n = game.earned.length;
+  let text = n ? `You won ${n} new sticker${n > 1 ? "s" : ""}!` : "You knew them all. Super explorer!";
+  if (newly.length) text += ` New level open: ${newly.join(" and ")}!`;
+  $("#celText").textContent = text;
+  $("#celStickers").innerHTML = game.earned.map((it) => `<span class="mini" title="${it.name}">${artHTML(it)}</span>`).join("");
+  $("#celebrate").hidden = false;
+  if (game.last) { celGlobe.highlight = game.last.kind === "ocean" ? null : (f) => matches(game.last, { kind: "country", f }); celGlobe.pin = game.last.kind === "ocean" ? game.last.at : null; spinTo(celGlobe, centerOf(game.last)); }
+  sfx.fanfare(); confetti(innerWidth / 2, innerHeight / 3, 120);
+  say(`Hooray! ${text}`);
+  $("#againBtn").onclick = () => {
+    if (tok !== game.token) return; sfx.pop();
+    if (game.mode === "flags") startFlags(); else if (game.mode === "find") startFind(game.level); else startMatch(game.level);
+  };
+}
+$("#celMenuBtn").onclick = () => { sfx.pop(); toMenu(); };
+
+/* ---------------- sticker book ---------------- */
+function openBook() {
+  const body = $("#bookBody"); body.innerHTML = "";
+  let total = 0;
+  for (const L of BOOK) {
+    const items = itemsFor(L.id); total += items.length;
+    const sec = document.createElement("section"); sec.className = "book-sec";
+    sec.innerHTML = `<h3>${L.emoji} ${L.name} <small>${countOf(L.id)} of ${items.length}</small></h3><div class="stickers"></div>`;
+    const grid = $(".stickers", sec);
+    for (const it of items) {
+      const got = !!save.stickers[it.id];
+      const b = document.createElement("button"); b.type = "button"; b.className = "sticker" + (got ? "" : " empty");
+      b.innerHTML = `<span class="art">${got ? artHTML(it) : "?"}</span><span>${it.name}</span>`;
+      b.onclick = () => {
+        sfx.pop();
+        if (!got) say(it.level === "flags" ? `Spot the flag of ${it.say} in Flag Fun to win this sticker!` : `Find ${it.level === "capitals" ? sayCap(it.c) : it.say} to win this sticker!`);
+        else say(it.level === "capitals" ? `${sayCap(it.c)} is the capital of ${sayC(it.c)}.` : `${cap1(it.say)}! ${it.fact}`);
+      };
+      grid.append(b);
+    }
+    body.append(sec);
+  }
+  $("#bookCount").textContent = `${Object.keys(save.stickers).length} of ${total} stickers`;
+  show("book");
+  say(`Your sticker book! You have ${Object.keys(save.stickers).length} stickers.`);
+}
+
+/* ---------------- sound + grown-ups' corner ---------------- */
+function syncMute() { $$(".muteBtn").forEach((b) => { b.textContent = save.muted ? "🔇" : "🔊"; b.setAttribute("aria-pressed", String(save.muted)); }); }
+$$(".muteBtn").forEach((b) => b.addEventListener("click", () => { save.muted = !save.muted; persist(); syncMute(); if (save.muted && synth) synth.cancel(); else sfx.pop(); }));
+$("#replay").onclick = () => { audio(); if (lastLine) say(lastLine); };
+
+function syncParent() {
+  $$("#rateSeg button").forEach((b) => b.setAttribute("aria-pressed", String(Number(b.dataset.rate) === save.rate)));
+  $$("#unlockSeg button").forEach((b) => b.setAttribute("aria-pressed", String((b.dataset.unlock === "1") === save.unlockAll)));
+}
+$$(".parentBtn").forEach((btn) => {
+  let t0 = 0, raf = 0;
+  const stop = () => { cancelAnimationFrame(raf); btn.style.setProperty("--p", 0); };
+  btn.addEventListener("pointerdown", (e) => {
+    e.preventDefault(); t0 = performance.now();
+    const tick = (t) => {
+      const k = (t - t0) / 1500; btn.style.setProperty("--p", Math.min(1, k));
+      if (k >= 1) { stop(); syncParent(); $("#parent").hidden = false; resetArm = false; $("#resetBtn").textContent = "Reset stickers"; return; }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+  });
+  btn.addEventListener("pointerup", () => { if (performance.now() - t0 < 1500) tell("That button is for grown-ups. Press and hold it."); stop(); });
+  btn.addEventListener("pointerleave", stop); btn.addEventListener("pointercancel", stop);
+});
+$$("#rateSeg button").forEach((b) => (b.onclick = () => { save.rate = Number(b.dataset.rate); persist(); syncParent(); say("This is how fast I talk."); }));
+$$("#unlockSeg button").forEach((b) => (b.onclick = () => { save.unlockAll = b.dataset.unlock === "1"; persist(); syncParent(); }));
+let resetArm = false;
+$("#resetBtn").onclick = () => {
+  if (!resetArm) { resetArm = true; $("#resetBtn").textContent = "Tap again to reset"; return; }
+  save.stickers = {}; persist(); updateStars(); resetArm = false; $("#resetBtn").textContent = "Stickers reset";
+};
+$("#parentClose").onclick = () => { $("#parent").hidden = true; if (game.pick && !$("#levels").hidden) openLevels(game.pick); };
+
+/* ---------------- boot ---------------- */
+updateStars(); syncMute();
+fetch("data/world.json").then((r) => r.json()).then((w) => { features = w.features; buildMap(); layout(); const b = $("#startBtn"); b.disabled = false; b.textContent = "Let's go! 🐢"; })
+  .catch(() => { $(".lede").textContent = "The map could not load. Please reload the page."; });
+</script>

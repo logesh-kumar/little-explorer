@@ -1,0 +1,16 @@
+# dependencies and build output
+node_modules/
+public/
+
+# Cloudflare / wrangler local state (holds the account id) and local secrets
+.wrangler/
+.dev.vars*
+.env
+.env.*
+
+# downloaded source data (tools/build-data.mjs fetches it again)
+tools/ne_110m.geojson
+
+# OS / editor noise
+.DS_Store
+*.log
